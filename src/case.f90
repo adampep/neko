@@ -98,7 +98,7 @@ contains
     namelist /NEKO_CASE/ mesh_file, fluid_scheme, lx,  &
          source_term, initial_condition, scalar, scalar_source_term,  &
          amr
-    
+
     integer :: ierr
     type(file_t) :: msh_file, bdry_file, part_file
     type(mesh_fld_t) :: msh_part

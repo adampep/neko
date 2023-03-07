@@ -922,7 +922,7 @@ contains
               MPI_INTEGER, MPI_MAX, NEKO_COMM, ierr)
 
          write(log_buf,1) dim, p4%elem%nelgt, p4%maxg
-1        format('gdim = ', i1, ', nelements =', i7,', max ref. lev. = ',i2)
+1        format('gdim = ', i1, ', nelements =', i9,', max ref. lev. = ',i2)
          call neko_log%message(log_buf)
 
          if (nelv > 0) then
@@ -1599,8 +1599,6 @@ contains
     ! argument list
     type(mesh_t), intent(inout) :: msh
     type(p4_mesh_import_t), intent(in) :: p4
-    !local variables
-    
 
     ! get vertex neighbours; not used
     !call p4_vertex_neighbour_fill(msh, p4)
@@ -1608,6 +1606,10 @@ contains
     ! USED IN gather_scatter.f90; MORE INVESTIGATION NEEDED
     ! get face neighbours; is it reall y needed?
     call p4_face_neighbour_fill(msh, p4)
+
+    ! USED IN gather_scatter.f90; MORE INVESTIGATION NEEDED
+    ! get neighbour rank info; based on vertex sharing info
+    call p4_rank_neighbour_fill(msh, p4)
 
     return
   end subroutine p4_neighbour_fill
@@ -1872,6 +1874,58 @@ contains
 
     return
   end subroutine p4_face_neighbour_fill
+
+  ! Fill neighbour rank using vertex sharing information
+  subroutine p4_rank_neighbour_fill(msh, p4)
+    ! argument list
+    type(mesh_t), intent(inout) :: msh
+    type(p4_mesh_import_t), intent(in) :: p4
+    !local variables
+    integer(i4) :: il, jl, src, dst
+    type(stack_i4_t) :: neigh_order
+
+
+    ! initialize neighbour ranks
+    allocate(msh%neigh(0:pe_size-1))
+    msh%neigh = .false.
+
+    ! p4%elem%vert%lrank
+    if (pe_size > 1) then
+       ! get rank list based on vertex information
+       do il= 1, p4%elem%vert%nrank ! mpi rank loop
+          if (p4%elem%vert%lrank(il) /= pe_rank) & ! not sure I have to exclude myself
+               & msh%neigh(p4%elem%vert%lrank(il)) = .true.
+       end do
+
+       !
+       ! Generate neighbour exchange order
+       !
+       call neigh_order%init(pe_size)
+
+       do il = 1, pe_size - 1
+          src = modulo(pe_rank - il + pe_size, pe_size)
+          dst = modulo(pe_rank + il, pe_size)
+          if (msh%neigh(src) .or. msh%neigh(dst)) then
+             jl = il ! adhere to standards...
+             call neigh_order%push(jl)
+          end if
+       end do
+
+       allocate(msh%neigh_order(neigh_order%size()))
+       select type(order => neigh_order%data)
+       type is (integer)
+          do il = 1, neigh_order%size()
+             msh%neigh_order(il) = order(il)
+          end do
+       end select
+       call neigh_order%free()
+    else
+       allocate(msh%neigh_order(1))
+       msh%neigh_order = 1
+    end if
+
+    return
+  end subroutine p4_rank_neighbour_fill
 
   ! Fill the mesh type with distdata information from p4_mesh_import type
   subroutine p4_distdata_fill(msh, p4)
