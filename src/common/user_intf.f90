@@ -39,6 +39,7 @@ module user_intf
   use usr_inflow
   use parameters
   use num_types
+  use amr
   implicit none
 
   !> Abstract interface for user defined initial conditions
@@ -102,6 +103,7 @@ module user_intf
      procedure(useric), nopass, pointer :: fluid_user_ic => null()
      procedure(user_initialize_modules), nopass, pointer :: user_init_modules => null()
      procedure(usermsh), nopass, pointer :: user_mesh_setup => null()
+     procedure(amrrefmark), nopass, pointer :: amr_refmark => null()
      procedure(usercheck), nopass, pointer :: user_check => null()
      procedure(source_term_pw), nopass, pointer :: fluid_user_f => null()
      procedure(source_term), nopass, pointer :: fluid_user_f_vector => null()
@@ -139,6 +141,10 @@ contains
     
     if (.not. associated(u%user_mesh_setup)) then
        u%user_mesh_setup => dummy_user_mesh_setup
+    end if
+
+    if (.not. associated(u%amr_refmark)) then
+       u%amr_refmark => dummy_amr_refmark
     end if
 
     if (.not. associated(u%user_check)) then
@@ -208,7 +214,15 @@ contains
   subroutine dummy_user_mesh_setup(msh)
     type(mesh_t), intent(inout) :: msh
   end subroutine dummy_user_mesh_setup
-  
+
+  !> Dummy user amr refinement flag mark
+  subroutine dummy_amr_refmark(refmark, tstep, msh, param)
+    integer, dimension(:), intent(out) :: refmark
+    integer, intent(in) :: tstep
+    type(mesh_t), intent(in) :: msh
+    type(param_t), intent(in) :: param
+  end subroutine dummy_amr_refmark
+
   !> Dummy user check
   subroutine dummy_user_check(t, tstep, u, v, w, p, coef, params)
     real(kind=rp), intent(in) :: t    

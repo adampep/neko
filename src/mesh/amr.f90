@@ -16,7 +16,7 @@ module amr
   implicit none
 
   private
-  public :: amr_refine, amr_rcn_init, amr_rcn_free
+  public :: amrrefmark, amr_refine, amr_rcn_init, amr_rcn_free
 
   ! type for fields reconstruction (refinement/transfer/coarsening)
   type amr_rcn_t
@@ -54,6 +54,18 @@ module amr
   end type amr_rcn_t
 
   type(amr_rcn_t), save :: amr_rcn
+
+  !> Abstract interface for user defined check functions
+  abstract interface
+     subroutine amrrefmark(refflag, tstep, msh, param)
+       import mesh_t
+       import param_t
+       integer, dimension(:), intent(out) :: refflag
+       integer, intent(in) :: tstep
+       type(mesh_t), intent(in) :: msh
+       type(param_t), intent(in) :: param
+     end subroutine amrrefmark
+  end interface
 
   interface amr_refine
      module procedure amr_msh_refine, amr_fluid_refine

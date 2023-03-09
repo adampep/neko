@@ -176,20 +176,18 @@ contains
 
     ! pre-refine the mesh before starting fluid
     ! this should be done for fresh run only (no restart)
-    if (amr) then
+    if (amr.and.C%params%restart_file=='') then
        prerefine : block
-         ! for now just testing
+         integer :: il
          integer(i4), allocatable, dimension(:) :: ref_mark
-         allocate(ref_mark(C%msh%nelv))
-         ! mark all the elements to be refined
-         ref_mark(:) = 1 ! THIS VALUE SHOULD BE TAKEN FORM p4est_wrap.h
-         call amr_refine(C%msh, C%params, ref_mark)
-         deallocate(ref_mark)
-         allocate(ref_mark(C%msh%nelv))
-         ! mark all the elements to be coarsened
-         ref_mark(:) = -1 ! THIS VALUE SHOULD BE TAKEN FORM p4est_wrap.h
-         call amr_refine(C%msh, C%params, ref_mark)
-         deallocate(ref_mark)
+         ! perform refinement as many times as max refinement level
+         ! mark refinment by negative tstep
+         do il = 1, C%params%amrlmax
+            allocate(ref_mark(C%msh%nelv))
+            call C%usr%amr_refmark(ref_mark, -il, C%msh, C%params)
+            call amr_refine(C%msh, C%params, ref_mark)
+            deallocate(ref_mark)
+         end do
        end block prerefine
     end if
 
