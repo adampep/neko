@@ -28,6 +28,12 @@ Makefile
 /**/.deps
 /**/Makefile
 /**/Makefile.in
+/src/libneko.a
+/src/neko
+genmeshbox
+prepart
+rea2nbin
+/.vscode
 /.cproject
 /.project
 /.pydevproject
