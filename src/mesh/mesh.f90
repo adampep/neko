@@ -50,6 +50,7 @@ module mesh
   use math
   use uset
   use curve
+  use connectivity
   implicit none
 
   integer, public, parameter :: NEKO_MSH_MAX_ZLBLS = 20 !< Max num. zone labels
@@ -71,7 +72,7 @@ module mesh
      integer :: glb_mpts        !< Global number of unique points
      integer :: glb_mfcs        !< Global number of unique faces
      integer :: glb_meds        !< Global number of unique edges
-     
+
      integer :: offset_el       !< Element offset
      integer :: max_pts_id      !< Max local point id
      
@@ -114,6 +115,10 @@ module mesh
      !> enables user to specify a deformation
      !! that is applied to all x,y,z coordinates generated with this mesh
      procedure(mesh_deform), pass(msh), pointer  :: apply_deform => null()
+
+     ! mesh connectivity
+     ! this is added due to nonconforming meshes that are difficult to represent with current strategy
+     class(connectivity_t), allocatable :: connect
   end type mesh_t
 
   abstract interface
@@ -364,6 +369,11 @@ contains
     call m%outlet_normal%free()
     call m%sympln%free()
     call m%periodic%free()
+
+    if (allocated(m%connect)) then
+       call m%connect%free()
+       deallocate(m%connect)
+    end if
     
   end subroutine mesh_free
 

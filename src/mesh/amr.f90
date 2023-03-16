@@ -1,6 +1,7 @@
 !> Main interface for h-type amr in neko
 module amr
   use mpi_f08
+  use mesh_import
   use num_types
   use comm
   use logger
@@ -16,7 +17,7 @@ module amr
   implicit none
 
   private
-  public :: amrrefmark, amr_refine, amr_rcn_init, amr_rcn_free
+  public :: amrrefmark, amr_refine, amr_init, amr_finalise, amr_rcn_init, amr_rcn_free
 
   ! type for fields reconstruction (refinement/transfer/coarsening)
   type amr_rcn_t
@@ -49,6 +50,9 @@ module amr
      ! element reconstruction data
      type(p4_msh_rcn_t) :: msh_rcn
 
+     ! mesh data imported from a mesh manager
+     class(mesh_import_t), allocatable :: msh_imp
+
      ! work space
      real(dp), allocatable, dimension(:,:,:,:) :: tmp
   end type amr_rcn_t
@@ -72,6 +76,29 @@ module amr
   end interface amr_refine
 
 contains
+
+  !> Initialise mesh manager and create the mesh
+  subroutine amr_init(mesh_file, msh)
+    ! argument list
+    character(len=*), intent(in) :: mesh_file
+    type(mesh_t), intent(inout) :: msh
+
+    ! for now everyhing is done assuming p4est to be a mesh mamager
+    call p4_init(mesh_file, amr_rcn%msh_imp)
+
+    ! import mesh
+    call p4_msh_get(msh, amr_rcn%msh_imp)
+
+    return
+  end subroutine amr_init
+
+  !> Finalise mesh manager and clean memory
+  subroutine amr_finalise()
+    ! for now I assume p4est is a mesh manager
+    call p4_finalise(amr_rcn%msh_imp)
+
+    return
+  end subroutine amr_finalise
 
   !> Initialise interpolation arrays for refinement/coarsening
   subroutine amr_rcn_init(msh, Xh)
@@ -385,7 +412,7 @@ contains
        call mxm(ref%tmp(:,:,1,1), ref%Xh%lx, ref%y_fn_to_crT(:,:, ch_pos(2)), &
             & ref%Xh%ly, vc, ref%Xh%ly)
     end if
-    
+
     return
   end subroutine amr_rcn_map_ftoc
 
@@ -568,12 +595,13 @@ contains
     do il = 1, msh%nelv
        el_gidx(il) = msh%offset_el + il
     end do
-    call p4_refine(ref_mark, el_gidx, amr_rcn%msh_trs, level_max, ifmod, amr_rcn%msh_rcn)
+    call p4_refine(ref_mark, el_gidx, amr_rcn%msh_trs, level_max, ifmod, &
+         & amr_rcn%msh_rcn, amr_rcn%msh_imp)
     deallocate(el_gidx)
 
     if (ifmod)  then
        ! Import mesh from p4est to neko
-       call p4_msh_get(msh)
+       call p4_msh_get(msh, amr_rcn%msh_imp)
 
 !!$       ! PLACE FOR NEW MESH PARTITIONING
 !!$

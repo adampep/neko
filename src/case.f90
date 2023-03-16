@@ -54,7 +54,6 @@ module case
   use ext_bdf_scheme
   use logger
   use jobctrl
-  use p4est
   use amr
   use user_intf  
   use scalar_pnpn ! todo directly load the pnpn? can we have other
@@ -162,11 +161,8 @@ contains
     end if
 
     if (amr) then
-       ! for now everyhing is done assuming p4est to be a mesh mamager
-       call p4_init(mesh_file)
-
-       ! import mesh
-       call p4_msh_get(C%msh)
+       ! initialise mesh manager and create mesh
+       call amr_init(mesh_file, C%msh)
     else
        msh_file = file_t(trim(mesh_file))
        call msh_file%read(C%msh)
@@ -450,7 +446,7 @@ contains
   subroutine case_free(C)
     type(case_t), intent(inout) :: C
 
-    call p4_finalize()
+    call amr_finalise()
 
     if (allocated(C%fluid)) then
        call C%fluid%free()
