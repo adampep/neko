@@ -1,7 +1,6 @@
 !> Main interface for data exchange and manipulation between p4est and neko
 module p4est
   use mpi_f08
-  use mesh_import
   use num_types
   use comm
   use logger
@@ -9,6 +8,8 @@ module p4est
   use math
   use tuple
   use htable
+  use mesh_import
+  use mesh_redistribute
   use distdata
   use point
   use quad
@@ -18,75 +19,86 @@ module p4est
   implicit none
 
   private
-  public :: p4_mesh_import_t, p4_msh_trs_t, p4_msh_rcn_t, p4_init, p4_finalise, p4_msh_get, p4_refine
+  public :: p4_mesh_import_t, p4_manager_init, p4_manager_free
 
-  ! Following node types contain geometrical and connectivity information for the mesh
-  ! Type for independent nodes
-  ! These are globally unique nodes not sharing physical coordinates and global id in
-  ! the communicator.
-  ! It is a minimal set of points needed to build consistent element connectivity map.
-  ! This set of nodes does not include e.g. multiplicative nodes on periodic faces
-  ! sharing the same global id in the communicator.
+  ! Following node types contain geometrical and connectivity information
+  ! for the mesh.
+  ! Type for independent nodes.
+  ! These are globally unique nodes not sharing physical coordinates and global
+  ! id in the communicator. It is a minimal set of points needed to build
+  ! a consistent element connectivity map. This set of nodes does not include
+  ! e.g. repeated many times nodes on periodic faces sharing the same global
+  ! id in the communicator.
   type p4_node_ind_t
-     integer(i4) :: lown ! number of owned independent
+     integer(i4) :: lown ! number of owned independent nodes
      integer(i4) :: lshr ! number of independent owned shared nodes
      integer(i4) :: loff ! local offset of owned independent nodes
      integer(i4) :: lnum ! local number of independent nodes
-     integer(i8), allocatable, dimension(:) :: gidx ! global indexing of unique nodes
+     integer(i8), allocatable, dimension(:) :: gidx ! global indexing of
+                                                    ! unique nodes
      integer(i4), allocatable, dimension(:) :: ndown ! node owner (mpi rank)
-     real(kind=dp), allocatable, dimension(:,:) :: coord ! physical node coordinates
-     ! NOTICE! p4est provides only approximate coordinates that are exact for max
-     ! refinement level = 0, or for linear elements (for any ref. lev.).
+     ! physical node coordinates
+     real(kind=dp), allocatable, dimension(:,:) :: coord
+     ! NOTICE! p4est provides only approximate coordinates that are exact
+     ! for max refinement level = 0, or for linear elements (for any ref. lev.).
    contains
      procedure, public, pass(this) :: free => p4_node_ind_free
   end type p4_node_ind_t
 
   ! Type for periodic nodes
   ! These are element vertices that are not included in independent node list
-  ! as they are located on a periodic boundary (have unique physical coordinates)
-  ! and share the same global id in the communicator. These nodes do not include
-  ! hanging nodes. The hanging nodes located on the periodic bc are marked as
-  ! hanging nodes only.
-  ! Notice! The element vertices from the set of vertices on periodic bc
+  ! as they are located on a periodic boundary (have unique physical
+  ! coordinates) and share the same global id in the communicator. These
+  ! nodes do not include hanging nodes. The hanging nodes located on the
+  ! periodic bc are marked as hanging nodes only.
+  ! Notice! The element vertices from the set of vertices on periodic boundaries
   ! may share the same global id in the communicator, so we can map periodic
   ! nodes to the independent ones.
   type p4_node_per_t
      integer(i4) :: lnum ! local number of periodic nodes
-     integer(i4), allocatable, dimension(:) :: lmap ! local periodic to independent node mapping
-     real(kind=dp), allocatable, dimension(:,:) :: coord ! physical node coordinates
-     ! NOTICE! p4est provides only approximate coordinates that are exact for max
-     ! refinement level = 0, or for linear elements (for any ref. lev.).
+     integer(i4), allocatable, dimension(:) :: lmap ! local periodic to
+                                                    ! independent node mapping
+     real(kind=dp), allocatable, dimension(:,:) :: coord ! physical node
+                                                         ! coordinates
+     ! NOTICE! p4est provides only approximate coordinates that are exact
+     ! for max refinement level = 0, or for linear elements (for any ref. lev.).
    contains
      procedure, public, pass(this) :: free => p4_node_per_free
   end type p4_node_per_t
 
   ! Type for hanging nodes
   ! Hanging nodes are neither independent nor periodic. They are located in
-  ! the centre of the nonconforming face or edge (have unique physical coordinates)
-  ! and can be maped to the independent face/edge vertices. This mapping is not unique
-  ! and will depend on the element position in a tree.
+  ! the centre of the nonconforming face or edge (have unique physical
+  ! coordinates) and can be maped to the independent face/edge vertices. This
+  ! mapping is not unique and will depend on the element position in a tree.
   ! There are two types of hanging nodes h2 (dependent on 2 independent nodes;
-  ! 2D face and 3D edge) and h4 (dependent on 4 independent nodes; 3D face). 
+  ! 2D face and 3D edge) and h4 (dependent on 4 independent nodes; 3D face).
   type p4_node_hng_t
      integer(i4) :: lnum ! local number of given type hanging nodes
-     integer(i4), allocatable, dimension(:,:) :: lmap ! local hanging to independent node mapping
-     real(kind=dp), allocatable, dimension(:,:) :: coord ! physical node coordinates
-     ! NOTCE! p4est provides only approximate coordinates that are exact for max
-     ! refinement level = 0, or for linear elements (for any ref. lev.).
+     integer(i4), allocatable, dimension(:,:) :: lmap ! local hanging to
+                                                      ! independent node mapping
+     real(kind=dp), allocatable, dimension(:,:) :: coord ! physical node
+                                                         ! coordinates
+     ! NOTICE! p4est provides only approximate coordinates that are exact
+     ! for max refinement level = 0, or for linear elements (for any ref. lev.).
    contains
      procedure, public, pass(this) :: free => p4_node_hng_free
   end type p4_node_hng_t
 
-  ! Connectivity information regarding vertices, faces and edges.
+  ! Type for connectivity information regarding vertices, faces and edges.
   ! It contains both object global numbering and communication information
   type p4_obj_conn_t
      integer(i4) :: lnum, lown ! number of local and owned objects
      integer(i8) :: goff ! global object offset
      integer(i8) :: gnum ! global number of objects
-     integer(i4), allocatable, dimension(:,:) :: lmap ! element vertices/faces/edges to object mapping
-     integer(i4) :: nrank, nshare ! number of MPI ranks sharing objects and number of shared objects
-     integer(i8), allocatable, dimension(:) :: lgidx ! global indexing of unique objects of given type
-     integer(i4), allocatable, dimension(:) :: lrank ! list of ranks sharing objects
+     integer(i4), allocatable, dimension(:,:) :: lmap ! element vertices/faces/edges
+                                                      ! to object mapping
+     integer(i4) :: nrank, nshare ! number of MPI ranks sharing objects and
+                                  ! number of shared objects
+     integer(i8), allocatable, dimension(:) :: lgidx ! global indexing of unique
+                                                     ! objects of given type
+     integer(i4), allocatable, dimension(:) :: lrank ! list of ranks sharing
+                                                     ! objects
      integer(i4), allocatable, dimension(:) :: lshare ! list of shared objects
      integer(i4), allocatable, dimension(:) :: loff ! offset in the lshare list
    contains
@@ -95,13 +107,19 @@ module p4est
 
   ! This type contains main element information
   type p4_element_t
-     integer(i4) :: nelt, nelv ! local number of temperature and velocity elements (Nek5000 specific)
+     integer(i4) :: nelt, nelv ! local number of temperature and velocity
+                               ! elements (Nek5000 specific; CHANGE)
      integer(i8) :: nelgt, nelgto ! global element number, global element offset
      integer(i8), allocatable, dimension(:) :: gidx ! global element index
      integer(i4), allocatable, dimension(:) :: level ! element refinement level
-     integer(i4), allocatable, dimension(:) :: igrp ! element group (not used right now)
-     integer(i4), allocatable, dimension(:,:) :: crv ! face curvature flag (not used right now)
-     integer(i4), allocatable, dimension(:,:) :: bc ! face boundary condition; -1- periodic, 0-internal, 0< user specified
+     integer(i4), allocatable, dimension(:) :: igrp ! element group
+                                                    ! (not used right now)
+     integer(i4), allocatable, dimension(:,:) :: crv ! face curvature flag
+                                                     ! (not used right now)
+     integer(i4), allocatable, dimension(:,:) :: bc ! face boundary condition;
+                                                    ! -1- periodic,
+                                                    ! 0-internal,
+                                                    ! 0< user specified
 
      ! Local mapping of element vertices to the nodes
      ! for:
@@ -114,7 +132,8 @@ module p4est
      ! npe = number of local periodic nodes
      ! nhf = number of local face hanging nodes
      ! nhe = number of local edge hanging nodes
-     ! vnmap uses symmetric vertex notation with (r,s,t) being a local counterpart of (x,y,z):
+     ! vnmap uses symmetric vertex notation with (r,s,t) being a local
+     ! counterpart of (x,y,z):
      !             3+--------+4    ^ s
      !             /        /|     |
      !            /        / |     |
@@ -124,7 +143,7 @@ module p4est
      !          |        | /     /
      !          |        |/     /
      !         5+--------+6    t
-     !               
+     !
      integer(i4), allocatable, dimension(:,:) :: vnmap
 
      ! Face orientation.
@@ -136,7 +155,7 @@ module p4est
      !                       2--3
      !                       |  |
      !                       0--1
-     ! They are numbered according to p4est by 0..7 and stored in falag
+     ! They are numbered according to p4est by 0..7 and stored in falg
      ! { 0, 1, 2, 3 }      0 => identity
      ! { 0, 2, 1, 3 }      1 => T
      ! { 1, 0, 3, 2 }      2 => P_x
@@ -149,9 +168,10 @@ module p4est
      !               P_x - permutation in x (rows)
      !               P_y - permutation in y (columns)
      integer(i4), allocatable, dimension(:,:) :: falg ! face alignment
-     ! Edge orientation is similar to 2D face, however p4est does not build a global edge
-     ! orientation and keeps just relative orientation of two edges. That is why I redo it
-     ! introducing global orientation based on vertex global id.
+     ! Edge orientation is similar to 2D face, however p4est does not build
+     ! a global edge orientation and keeps just relative orientation of two
+     ! edges. That is why I redo it introducing global orientation based on
+     ! vertex global id. THIS HES TO BE CHANGED
      integer(i4), allocatable, dimension(:,:) :: ealg ! edge alignment
 
      ! Topology information: hanging elements, faces, edges and vertices
@@ -178,16 +198,16 @@ module p4est
      !        and is on the boundary of a full face,
      !   =  4 if the edge is in the middle of a full face.
      !        See the diagram below for clarification.
-     !  o...............o  o...............o  +---2---+.......o  o.......+---3---+
-     !  :               :  :               :  |       |       :  :       |       |
-     !  :               :  :               :  3   2   4       :  :       4   3   3
-     !  :               :  :               :  |       |       :  :       |       |
-     !  +---4---+       :  :       +---4---+  +---4---+       :  :       +---4---+
-     !  |       |       :  :       |       |  :               :  :               :
-     !  2   0   4       :  :       4   1   2  :               :  :               :
-     !  |       |       :  :       |       |  :               :  :               :
-     !  +---2---+.......o  o.......+---3---+  o...............o  o...............o
-     ! 
+     !  o...............o o...............o +---2---+.......o o.......+---3---+
+     !  :               : :               : |       |       : :       |       |
+     !  :               : :               : 3   2   4       : :       4   3   3
+     !  :               : :               : |       |       : :       |       |
+     !  +---4---+       : :       +---4---+ +---4---+       : :       +---4---+
+     !  |       |       : :       |       | :               : :               :
+     !  2   0   4       : :       4   1   2 :               : :               :
+     !  |       |       : :       |       | :               : :               :
+     !  +---2---+.......o o.......+---3---+ o...............o o...............o
+     !
      !                     o                  +-------+
      !                     :                  |\       \
      !                     :                  1 \       \
@@ -200,21 +220,29 @@ module p4est
      !                      \ |       |
      !                       \|       |
      !                        +-------+
-     integer(i4), allocatable, dimension(:) :: hngel ! hanging element list (1 if at least one hanging face or edge otherwise 0)
-     integer(i4), allocatable, dimension(:,:) :: hngfc ! hanging face list; position of hanging face; otherwise -1
-     integer(i4), allocatable, dimension(:,:) :: hnged ! hanging edge list; position of hanging edge; otherwise -1 (3D only)
-!!!!!!!!!!!!! vertex hanging information can be directly extracted from vnmap; It can bee I will have to add an array
+     integer(i4), allocatable, dimension(:) :: hngel ! hanging element list
+                      ! (1 if at least one hanging face or edge otherwise 0)
+     integer(i4), allocatable, dimension(:,:) :: hngfc ! hanging face list;
+                                    ! position of hanging face; otherwise -1
+     integer(i4), allocatable, dimension(:,:) :: hnged ! hanging edge list;
+                          ! position of hanging edge; otherwise -1 (3D only)
+!!!!!!!!!!!!! vertex hanging information can be directly extracted from vnmap;
+!!!!!!!!!!!!! It can bee I will have to add an array
 
      ! Flag elements that can be coarsened and share the same parent
-     ! fmlm(1,LELT) - mark of a parent (not a real element number as parents do not exist on neko side)
+     ! fmlm(1,LELT) - mark of a parent (not a real element number as parents
+     ! do not exist on neko side)
      !                         0 - element that cannot be coarsened
      !                        >0 - family mark
      ! fmlm(2,LELT) - vertex number shared by all the family members
      integer(i8), allocatable, dimension(:,:) :: fmlm
 
-     ! Following data could be recreated from nodes, but for now I stick to what p4est can provide.
-     ! Node info for building communicators; includes global indexing of various element objects
-     ! vertex%lmap uses symmetric vertex notation with (r,s,t) being a local counterpart of (x,y,z):
+     ! Following data could be recreated from nodes, but for now I stick to
+     ! what p4est can provide.
+     ! Node info for building communicators; includes global indexing of various
+     ! element objects
+     ! vertex%lmap uses symmetric vertex notation with (r,s,t) being a local
+     ! counterpart of (x,y,z):
      !             3+--------+4    ^ s
      !             /        /|     |
      !            /        / |     |
@@ -224,9 +252,10 @@ module p4est
      !          |        | /     /
      !          |        |/     /
      !         5+--------+6    t
-     !               
+     !
      type(p4_obj_conn_t) :: vert ! vertex info
-     ! face%lmap uses symmetric face notation with (r,s,t) being a local counterpart of (x,y,z):
+     ! face%lmap uses symmetric face notation with (r,s,t) being a local
+     ! counterpart of (x,y,z):
      !              +--------+     ^ s
      !             /        /|     |
      !            /    4   / |     |
@@ -238,7 +267,8 @@ module p4est
      !          +--------+     t
      !               3
      type(p4_obj_conn_t) :: face ! face info
-     ! edge%lmap uses symmetric edge notation with (r,s,t) being a local counterpart of (x,y,z):
+     ! edge%lmap uses symmetric edge notation with (r,s,t) being a local
+     ! counterpart of (x,y,z):
      !              +---2----+     ^ s
      !             /        /|     |
      !           11       12 6     |
@@ -248,7 +278,7 @@ module p4est
      !          7        8 10    /
      !          |        |/     /
      !          +---3----+     t
-     !               
+     !
      type(p4_obj_conn_t) :: edge ! edges info; 3D mesh only
    contains
      procedure, public, pass(this) :: free => p4_element_free
@@ -257,7 +287,8 @@ module p4est
   ! Type combining all the mesh information that can be extracted from p4est
   type, extends(mesh_import_t) :: p4_mesh_import_t
      ! general information
-     integer :: dim, maxl, maxg ! dimension, local and global max refinement level
+     integer :: dim, maxl, maxg ! dimension, local and global max refinement
+                                ! level
 
      ! unique node information
      type(p4_node_ind_t) :: indn ! independent nodes
@@ -268,57 +299,36 @@ module p4est
      ! element information
      type(p4_element_t) :: elem
    contains
+     procedure, public, pass(this) :: msh_get => p4_msh_get
+     procedure, public, pass(this) :: refine => p4_refine
      procedure, public, pass(this) :: free => p4_mesh_import_free
   end type p4_mesh_import_t
-
-  ! type for data transfer between p4est and neko
-  type p4_msh_trs_t
-     ! p4est <=> neko element distribution mapping (global element number, process id)
-     integer(i4), allocatable, dimension(:, :) :: elmap_p2n, elmap_n2p
-   contains
-     procedure, public, pass(this) :: free => p4_msh_trs_free
-  end type p4_msh_trs_t
-
-  ! type for element reconstruction
-  type p4_msh_rcn_t
-     ! arrays to store global element re-mapping to perform refinement on neko side
-     ! map_nr - local number of unchanged elements
-     ! rfn_nr - local number of refined elements
-     ! crs_nr - local number of coarsened elements
-     ! rfn_nr_a - local number of elements after refinement (including refined ones)
-     ! crs_nr_s - local number of elements for coarsening (child owner); THIS IS MOST PROBABLY NOT NEEDED
-     ! crs_nr_b - local number of elements before coarsening (parent owner; including one that would disappear)
-     ! nelvo - old number of local elements
-     integer(i4) :: map_nr, rfn_nr, crs_nr, rfn_nr_a, crs_nr_s, crs_nr_b, nelvo
-     ! elgl_map - element number/process id mapping data for unchanged elements (old gl. num., old loc. num., old proc. id)
-     ! elgl_rfn - element number/process id mapping data for refined elements (ch. gl. num., old p. gl. num., old p. loc. num., old p. proc. id, ch. pos.)
-     integer(i4), allocatable, dimension(:, :) :: elgl_map, elgl_rfn
-     ! elgl_crs - element number/process id mapping data for coarsened elements (new gl. num., old ch. gl. num., old ch. loc. num., old ch. proc. id)
-     integer(i4), allocatable, dimension(:, :, :) :: elgl_crs
-   contains
-     procedure, public, pass(this) :: free => p4_msh_rcn_free
-  end type p4_msh_rcn_t
 
   ! connectivity parameter arrays
   ! face vertices
   integer, parameter, dimension(4,6) :: p4_vface = reshape(&
-       &(/ 1,3,5,7 , 2,4,6,8 , 1,2,5,6 , 3,4,7,8 , 1,2,3,4 , 5,6,7,8 /),shape(p4_vface))
+       &(/ 1,3,5,7 , 2,4,6,8 , 1,2,5,6 , 3,4,7,8 , 1,2,3,4 , 5,6,7,8 /),&
+       &shape(p4_vface))
 
   ! edge vertices
   integer, parameter, dimension(2,12) :: p4_vedge  = reshape(&
-       &(/ 1,2 , 3,4 , 5,6 , 7,8 , 1,3 , 2,4 , 5,7 , 6,8 , 1,5 , 2,6 , 3,7 , 4,8 /),shape(p4_vedge))
+       &(/ 1,2 , 3,4 , 5,6 , 7,8 , 1,3 , 2,4 , 5,7 , 6,8 , 1,5 , 2,6 , 3,7&
+       & , 4,8 /),shape(p4_vedge))
 
   ! edge related faces
   integer, parameter, dimension(2,12) :: p4_eface  = reshape(&
-       &(/ 3,5 , 4,5 , 3,6 , 4,6 , 1,5 , 2,5 , 1,6 , 2,6 , 1,3 , 2,3 , 1,4 , 2,4 /),shape(p4_eface))
+       &(/ 3,5 , 4,5 , 3,6 , 4,6 , 1,5 , 2,5 , 1,6 , 2,6 , 1,3 , 2,3 , 1,4&
+       & , 2,4 /),shape(p4_eface))
 
   ! corner related faces
   integer, parameter, dimension(3,8) :: p4_cface = reshape(&
-       &(/ 1,3,5 , 2,3,5 , 1,4,5 , 2,4,5 , 1,3,6 , 2,3,6 , 1,4,6 , 2,4,6 /),shape(p4_cface))
+       &(/ 1,3,5 , 2,3,5 , 1,4,5 , 2,4,5 , 1,3,6 , 2,3,6 , 1,4,6 , 2,4,6 /),&
+       &shape(p4_cface))
 
   ! corner related edges
   integer, parameter, dimension(3,8) :: p4_cedge = reshape(&
-       &(/ 1,5,9 , 1,6,10 , 2,5,11 , 2,6,12 , 3,7,9 , 3,8,10 , 4,7,11 , 4,8,12 /),shape(p4_cedge))
+       &(/ 1,5,9 , 1,6,10 , 2,5,11 , 2,6,12 , 3,7,9 , 3,8,10 , 4,7,11 ,&
+       & 4,8,12 /),shape(p4_cedge))
 
   ! corner to face corner
   integer, parameter, dimension(6,8) :: p4_cfcrn = reshape(&
@@ -336,19 +346,16 @@ module p4est
        &(/ 1,2,3,4 , 1,3,2,4 , 2,1,4,3 , 2,4,1,3 , 3,1,4,2 , 3,4,1,2 &
        &, 4,2,3,1 , 4,3,2,1 /),shape(p4_pt))
 
-  ! data imported from p4est
-  !type(p4_mesh_import_t), save :: p4
-
-
   ! default log threshold - production; for more info see sc.h
   integer, parameter :: p4_lp_production = 6
 
+  ! set of interfaces to call p4est functions
   interface
-     ! set of interfaces to call p4est functions
-     subroutine wp4est_init(fmpicomm, catch_signals, print_backtrace, log_threshold) &
-          & bind(c, name = 'wp4est_init')
+     subroutine wp4est_init(fmpicomm, catch_signals, print_backtrace, &
+          & log_threshold) bind(c, name = 'wp4est_init')
        USE, INTRINSIC :: ISO_C_BINDING
-       integer(c_int), value :: fmpicomm, catch_signals, print_backtrace, log_threshold
+       integer(c_int), value :: fmpicomm, catch_signals, &
+            & print_backtrace, log_threshold
      end subroutine wp4est_init
 
      subroutine wp4est_finalize(log_priority) bind(c, name = 'wp4est_finalize')
@@ -374,13 +381,15 @@ module p4est
        integer(c_int) :: is_valid
      end subroutine wp4est_tree_valid
 
-     subroutine wp4est_tree_save(save_data,filename) bind(c, name = 'wp4est_tree_save')
+     subroutine wp4est_tree_save(save_data,filename) &
+          & bind(c, name = 'wp4est_tree_save')
        USE, INTRINSIC :: ISO_C_BINDING
        integer(c_int), value :: save_data
        character(kind=c_char), dimension(*) :: filename
      end subroutine wp4est_tree_save
 
-     subroutine wp4est_tree_load(fmpicomm, load_data, filename) bind(c, name = 'wp4est_tree_load')
+     subroutine wp4est_tree_load(fmpicomm, load_data, filename) &
+          & bind(c, name = 'wp4est_tree_load')
        USE, INTRINSIC :: ISO_C_BINDING
        integer(c_int), value :: fmpicomm, load_data
        character(kind=c_char), dimension(*) :: filename
@@ -546,7 +555,8 @@ module p4est
        type(c_ptr), value :: el_gnum, el_lnum, el_nid
      end subroutine wp4est_egmap_put
 
-     subroutine wp4est_msh_get_hst(map_nr, rfn_nr, crs_nr, elgl_map, elgl_rfn, elgl_crs) &
+     subroutine wp4est_msh_get_hst(map_nr, rfn_nr, crs_nr, &
+          & elgl_map, elgl_rfn, elgl_crs) &
           & bind(c, name = 'wp4est_msh_get_hst')
        USE, INTRINSIC :: ISO_C_BINDING
        integer(c_int) :: map_nr, rfn_nr, crs_nr
@@ -677,42 +687,9 @@ contains
     return
   end subroutine p4_mesh_import_free
 
-  subroutine p4_msh_trs_free(this)
-    ! argument list
-    class(p4_msh_trs_t), intent(inout) :: this
-
-    ! Deallocate arrays
-    if (allocated(this%elmap_p2n)) deallocate(this%elmap_p2n)
-    if (allocated(this%elmap_n2p)) deallocate(this%elmap_n2p)
-
-    return
-  end subroutine p4_msh_trs_free
-
-  subroutine p4_msh_rcn_free(this)
-    ! argument list
-    class(p4_msh_rcn_t), intent(inout) :: this
-
-    ! Reset registers
-    this%map_nr = 0
-    this%rfn_nr = 0
-    this%crs_nr = 0
-    this%rfn_nr_a = 0
-    this%crs_nr_s = 0
-    this%crs_nr_b = 0
-    this%nelvo = 0
-
-    ! Deallocate arrays
-    if (allocated(this%elgl_map)) deallocate(this%elgl_map)
-    if (allocated(this%elgl_rfn)) deallocate(this%elgl_rfn)
-    if (allocated(this%elgl_crs)) deallocate(this%elgl_crs)
-
-    return
-  end subroutine p4_msh_rcn_free
-
 #ifdef HAVE_P4EST
-  subroutine p4_init(mesh_file, p4, log_threshold)
+  subroutine p4_manager_init(mesh_file, log_threshold)
     character(len=*), intent(in) :: mesh_file
-    class(mesh_import_t), allocatable, intent(out) :: p4
     integer, intent(in), optional :: log_threshold
 
     ! sc, p4est initialisation
@@ -721,162 +698,154 @@ contains
     character(18) :: log_cval
     ! p4est file reading
     character(len=80) :: suffix
+    character(len=2) :: nlp
 
-    ! allocate mesh import space
-    if (allocated(p4)) then
-       call p4%free()
-       deallocate(p4)
-    end if
-    allocate(p4_mesh_import_t :: p4)
-
-    if (.not.p4%initialised()) then
-       ! get log threshold for p4est and sc librarioes
-       if (present(log_threshold)) then
-          log_thr = log_threshold
-       else
-          if (pe_rank.eq.0) then
-             call getenv('NEKOP4LOGL',log_cval)
-             slen = len_trim(log_cval)
-             if (slen.gt.0) then
-                read(log_cval,'(I2)',iostat=ierr) log_thr
-                if (ierr.gt.0) log_thr = p4_lp_production
-             else
-                log_thr = p4_lp_production ! default
-             end if
+    ! get log threshold for p4est and sc libraries
+    if (present(log_threshold)) then
+       log_thr = log_threshold
+    else
+       if (pe_rank.eq.0) then
+          call getenv('NEKOP4LOGL',log_cval)
+          slen = len_trim(log_cval)
+          if (slen.gt.0) then
+             read(log_cval,'(I2)',iostat=ierr) log_thr
+             if (ierr.gt.0) log_thr = p4_lp_production
+          else
+             log_thr = p4_lp_production ! default
           end if
        end if
-       ! broadcast log threshold
-       call MPI_Bcast(log_thr, 1, MPI_INTEGER, 0, NEKO_COMM, ierr)
-       ! initialise sc and p4est
-       call wp4est_init(NEKO_COMM%mpi_val, catch_signals, &
-            & print_backtrace, log_thr)
-       call p4%set_init(.true.)
-
-       ! p4est file reading
-       call filename_suffix(mesh_file, suffix)
-       if (trim(suffix) /= 'p4est') call neko_error('Expected p4est mesh file')
-       call neko_log%message('Reading p4est file ' // trim(mesh_file))
-       call wp4est_tree_load(NEKO_COMM%mpi_val,load_data, &
-            & trim(mesh_file)//c_null_char)
-       ! check consistency of a forest and a connectivity
-       call wp4est_tree_valid(is_valid)
-       if (is_valid == 0) call neko_error('Invalid p4est tree')
-       call wp4est_cnn_valid(is_valid)
-       if (is_valid == 0) call neko_error('Invalid p4est connectivity')
-       ! perform partitioning on p4est side
-       call wp4est_part(1)
     end if
+    ! broadcast log threshold
+    call MPI_Bcast(log_thr, 1, MPI_INTEGER, 0, NEKO_COMM, ierr)
+    write(nlp,'(I2)') log_thr
+    call neko_log%message('p4est will use log level '//nlp)
+    call neko_log%message(&
+         &'This log level can be changed by setting shell variable NEKOP4LOGL')
+    call neko_log%message(&
+         &"To suppress p4est logs 'export NEKOP4LOGL=9'")
+    ! initialise sc and p4est
+    call wp4est_init(NEKO_COMM%mpi_val, catch_signals, &
+         & print_backtrace, log_thr)
+
+    ! p4est file reading
+    call filename_suffix(mesh_file, suffix)
+    if (trim(suffix) /= 'p4est') call neko_error('Expected p4est mesh file')
+    call neko_log%message('Reading p4est file ' // trim(mesh_file))
+    call wp4est_tree_load(NEKO_COMM%mpi_val,load_data, &
+         & trim(mesh_file)//c_null_char)
+    ! check consistency of a forest and a connectivity
+    call wp4est_tree_valid(is_valid)
+    if (is_valid == 0) call neko_error('Invalid p4est tree')
+    call wp4est_cnn_valid(is_valid)
+    if (is_valid == 0) call neko_error('Invalid p4est connectivity')
+    ! perform partitioning on p4est side
+    call wp4est_part(1)
 
     return
-  end subroutine p4_init
+  end subroutine p4_manager_init
 
-  subroutine p4_finalise(p4, log_priority)
-    class(mesh_import_t), allocatable, intent(inout) :: p4
+  subroutine p4_manager_free(log_priority)
     integer, intent(in), optional :: log_priority
 
     integer :: log_thr
 
-    if (allocated(p4)) then
-       select type (p4)
-       type is(p4_mesh_import_t)
-          if (p4%initialised()) then
-             ! clean memory
-             call p4%free()
-
-             if (present(log_priority)) then
-                log_thr = log_priority
-             else
-                log_thr = p4_lp_production ! default
-             end if
-             ! destroy p4est objects
-             call wp4est_tree_del()
-             call wp4est_cnn_del()
-             ! finalise p4est and sc
-             call wp4est_finalize(log_thr)
-          end if
-       end select
-       deallocate(p4)
+    if (present(log_priority)) then
+       log_thr = log_priority
+    else
+       log_thr = p4_lp_production ! default
     end if
+    ! destroy p4est objects
+    call wp4est_tree_del()
+    call wp4est_cnn_del()
+    ! finalise p4est and sc
+    call wp4est_finalize(log_thr)
 
     return
-  end subroutine p4_finalise
+  end subroutine p4_manager_free
 
-  subroutine p4_msh_get(msh, p4)
+  subroutine p4_msh_get(this, msh)
     ! argument list
+    class(p4_mesh_import_t), intent(inout) :: this
     type(mesh_t), intent(inout) :: msh
-    class(mesh_import_t), intent(inout) :: p4
     ! local variables
     integer(i4) :: il
 
-
-    select type (p4)
-    type is(p4_mesh_import_t)
+!    select type (this)
+!    type is(p4_mesh_import_t)
        call neko_log%section("Mesh")
        ! import data from p4est
-       call p4_mesh_import_data(p4)
+       call p4_mesh_import_data(this)
 
        call neko_log%message('Build the mesh')
 
-       ! What follows is just a hack, as I'm trying to minimise changes outside this file
-       ! There are some differences in a concept, so not everything can be filled in properly
+       ! What follows is just a hack, as I'm trying to minimise
+       ! changes outside this file
+       ! There are some differences in a concept, so not everything
+       ! can be filled in properly
 
        ! Initialise mesh type
        call mesh_free(msh)
        ! general mesh info
-       msh%gdim = p4%dim ! grid dimension
+       msh%gdim = this%dim ! grid dimension
        ! general element info
-       msh%nelv = p4%elem%nelv ! local number of elements
-       msh%glb_nelv = p4%elem%nelgt ! global number of elelments
-       msh%offset_el = p4%elem%nelgto ! global element offset; NOT NEEDED IN THIS VERSION
-       msh%npts = 2**p4%dim ! number of element vertices
+       msh%nelv = this%elem%nelv ! local number of elements
+       msh%glb_nelv = this%elem%nelgt ! global number of elelments
+       msh%offset_el = this%elem%nelgto ! global element offset;
+       ! NOT NEEDED IN THIS VERSION
+       msh%npts = 2**this%dim ! number of element vertices
 
        ! Point definition differs so I include here independent points only
-       msh%mpts = p4%elem%vert%lnum ! local number of unique vertices (independent nodes only)
-       msh%mfcs = p4%elem%face%lnum ! local number of unique faces
-       msh%meds = p4%elem%edge%lnum ! local number of unique edges
+       msh%mpts = this%elem%vert%lnum ! local number of unique vertices
+       ! (independent nodes only)
+       msh%mfcs = this%elem%face%lnum ! local number of unique faces
+       msh%meds = this%elem%edge%lnum ! local number of unique edges
 
-       msh%glb_mpts = p4%elem%vert%gnum ! global number of unique vertices
-       msh%glb_mfcs = p4%elem%face%gnum ! global number of unique faces
-       msh%glb_meds = p4%elem%edge%gnum ! global number of unique edges
+       msh%glb_mpts = this%elem%vert%gnum ! global number of unique vertices
+       msh%glb_mfcs = this%elem%face%gnum ! global number of unique faces
+       msh%glb_meds = this%elem%edge%gnum ! global number of unique edges
 
-       ! this dosen't seem to be used in original version and I do not need it for p4est either
+       ! this dosen't seem to be used in original version and
+       ! I do not need it for p4est either
        !msh%max_pts_id =
 
        ! If there are any elements
-       if (p4%elem%nelv > 0) then
+       if (this%elem%nelv > 0) then
 
           ! Fill in point/node information
-          call p4_nodes_fill(msh, p4)
+          call p4_nodes_fill(msh, this)
 
           ! Fill in element information
-          call p4_element_fill(msh, p4)
+          call p4_element_fill(msh, this)
 
-          ! msh%htp - not used as hanging node global id can be identified for a given element only
-          ! msh%htf - not used as faces global id is already provided by p4
-          ! msh%hte - not used as edge global id is already provided by p4
+          ! msh%htp - not used as hanging node global id can be
+          ! identified for a given element only
+          ! msh%htf - not used as faces global id is already provided by p4est
+          ! msh%hte - not used as edge global id is already provided by p4est
 
           ! Fill in neighbour information
-          call p4_neighbour_fill(msh, p4)
+          call p4_neighbour_fill(msh, this)
 
           ! Fill in distdata information
-          call p4_distdata_fill(msh, p4)
+          call p4_distdata_fill(msh, this)
 
           ! Fill in boundary condition information
-          call p4_bc_fill(msh, p4)
+          call p4_bc_fill(msh, this)
 
 
           ! curved edges
           !! @todo curves for p4est
           call msh%curve%init(msh%nelv)
-          ! P4EST DOES NOT PROVIDE CURVATURE DATA DIRECTLY, SO LET'S LEAVE IT FOR NOW
+          ! P4EST DOES NOT PROVIDE CURVATURE DATA DIRECTLY,
+          ! SO LET'S LEAVE IT FOR NOW
           ! this data should be loaded from another file??
           !call mesh_mark_curve_element(msh, el_idx, curve_data, type)
 
           ! fill connectivity information
-          call p4_connect_fill(msh,p4)
+          call p4_connect_fill(msh, this)
 
           ! mesh finalisation
-          call mesh_generate_flags(msh) ! deformation flag; THIS IS NOT 100% CORRECT
+          call mesh_generate_flags(msh) ! deformation flag;
+          ! THIS IS NOT 100% CORRECT
 
           call msh%wall%finalize() ! BC finalisation
           call msh%inlet%finalize()
@@ -894,23 +863,25 @@ contains
        msh%lnumr = .true.
 
        call neko_log%end_section()
-    end select
+!    end select
 
     return
   end subroutine p4_msh_get
 
   !> perform refinement based on refinement flag
-  subroutine p4_refine(ref_mark, el_gidx, msh_trs, level_max, ifmod, msh_rcn, p4)
+  subroutine p4_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
+       &ifmod, msh_rcn)
     ! argument list
+    class(p4_mesh_import_t), intent(inout) :: this
     integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
-    type(p4_msh_trs_t), intent(in) :: msh_trs
+    type(mesh_manager_transfer_t), intent(in) :: msh_trs
     integer(i4), intent(in) :: level_max
     logical, intent(out) :: ifmod
-    type(p4_msh_rcn_t), intent(out) :: msh_rcn
-    class(mesh_import_t), intent(inout) :: p4
+    type(mesh_reconstruct_transfer_t), intent(out) :: msh_rcn
     ! local variables
     integer(i4) :: il, itmp
-    integer(i4), target, allocatable, dimension(:) :: pref_mark, pel_gnum, pel_lnum, pel_nid
+    integer(i4), target, allocatable, dimension(:) :: pref_mark, pel_gnum,&
+         & pel_lnum, pel_nid
     integer(i4), allocatable, dimension(:) :: nel_gnum, nel_lnum, nel_nid
     ! element restructure data
     integer(i4) :: map_nr, rfn_nr, crs_nr
@@ -920,42 +891,48 @@ contains
     ! THIS SHOULD BE PROBABLY MOVED FROM HERE
     ! partition strategy for p4est
     ! 0 - equal element count
-    ! 1 - octants families prepared for coarsening
+    ! 1 - octant families prepared for coarsening
     integer(i4), parameter :: p4part = 1
 
-    ! copy paremeter for forest comparison in p4est
+    ! copy parameter for forest comparison in p4est
     ! 0 - no check of quadrant data
     ! 1 - check if quadrant data are identical
     integer(i4), parameter :: p4test = 1
 
-    select type (p4)
-    type is(p4_mesh_import_t)
+!    select type (this)
+!    type is(p4_mesh_import_t)
        itmp = size(ref_mark)
        if (itmp /= size(el_gidx)) call neko_error('Inconsistent array size')
 
        ! put refinement mark in p4est
-       allocate(pref_mark(p4%elem%nelv))
-       ! PLACE FOR DATA DISTRIBUTION (NEKO => P4EST) using msh_trs
-       ! in general itmp can be different than p4%elem%nelv, but for now they are the same
+       allocate(pref_mark(this%elem%nelv))
+       ! PLACE FOR DATA DISTRIBUTION (NEKO => P4EST) using
+       ! mesh_manager_transfer_t
+       ! in general itmp can be different than this%elem%nelv, but for now
+       ! they are the same
        pref_mark(1:itmp) = ref_mark(1:itmp)
        ! PLACE FOR LOCAL CONSISTENCY CHECKS
        call wp4est_refm_put(c_loc(pref_mark))
 
        ! put element distribution info in p4est
-       allocate(pel_gnum(p4%elem%nelv), pel_lnum(p4%elem%nelv), pel_nid(p4%elem%nelv))
+       allocate(pel_gnum(this%elem%nelv), pel_lnum(this%elem%nelv),&
+            & pel_nid(this%elem%nelv))
        allocate(nel_gnum(itmp), nel_lnum(itmp), nel_nid(itmp))
-       ! 
+       !
        do il = 1, itmp
           nel_gnum(il) = el_gidx(il)
           nel_lnum(il) = il
        end do
        nel_nid(:) = pe_rank
-       ! PLACE FOR DATA DISTRIBUTION (NEKO=> P4EST) using msh_trs
-       ! in general itmp can be different than p4%elem%nelv, but for now they are the same
+       ! PLACE FOR DATA DISTRIBUTION (NEKO=> P4EST) using
+       ! mesh_manager_transfer_t
+       ! in general itmp can be different than this%elem%nelv, but for now
+       ! they are the same
        pel_gnum(1:itmp) = nel_gnum(1:itmp)
        pel_lnum(1:itmp) = nel_lnum(1:itmp)
        pel_nid(1:itmp) = nel_nid(1:itmp)
-       ! this possibly could be reconstructed from msh_trs, so no communication would be necessary
+       ! this possibly could be reconstructed from mesh_manager_transfer_t,
+       ! so no communication would be necessary
        call wp4est_egmap_put(c_loc(pel_gnum), c_loc(pel_lnum), c_loc(pel_nid))
 
        ! perform local refine/coarsen/balance on p4est side
@@ -964,7 +941,7 @@ contains
        call wp4est_coarsen()
        call wp4est_balance()
        ! perform partitioning on p4est side
-       call wp4est_part(1)
+       call wp4est_part(p4part)
        call wp4est_tree_check(itmp, p4test)
 
        if (itmp == 0 ) then
@@ -975,10 +952,10 @@ contains
 
        ! if mesh was modified extract data to restructure elements
        if (ifmod) then
-          itmp = 2**p4%dim ! number of vertices
-          allocate(elgl_map(3, itmp*p4%elem%nelv), &
-               & elgl_rfn(5, itmp*p4%elem%nelv), &
-               & elgl_crs(4, itmp, p4%elem%nelv))
+          itmp = 2**this%dim ! number of vertices
+          allocate(elgl_map(3, itmp*this%elem%nelv), &
+               & elgl_rfn(5, itmp*this%elem%nelv), &
+               & elgl_crs(4, itmp, this%elem%nelv))
           call wp4est_msh_get_hst(map_nr, rfn_nr, crs_nr, c_loc(elgl_map), &
                & c_loc(elgl_rfn), c_loc(elgl_crs))
           ! move data
@@ -991,8 +968,9 @@ contains
        end if
 
        ! free memory
-       deallocate(pref_mark, pel_gnum, pel_lnum, pel_nid, nel_gnum, nel_lnum, nel_nid)
-    end select
+       deallocate(pref_mark, pel_gnum, pel_lnum, pel_nid, nel_gnum,&
+            & nel_lnum, nel_nid)
+!    end select
 
     return
   end subroutine p4_refine
@@ -1010,7 +988,6 @@ contains
     real(dp), allocatable, target, dimension(:,:) :: rtmpv1
     real(dp), allocatable, target, dimension(:,:,:) :: rtmpv2
 
-    if (p4%initialised()) then
        call neko_log%message('Import mesh data from p4est')
        ! clean memory
        call p4%free()
@@ -1027,7 +1004,7 @@ contains
          ! get mesh size and distribution information
          call wp4est_msh_get_size(p4%dim,p4%elem%nelgt, p4%elem%nelgto, &
               & p4%elem%nelt, p4%elem%nelv, p4%maxl)
-         ! get max refinement level across all ranks 
+         ! get max refinement level across all ranks
          call MPI_Allreduce(p4%maxl, p4%maxg, 1, &
               MPI_INTEGER, MPI_MAX, NEKO_COMM, ierr)
 
@@ -1189,9 +1166,6 @@ contains
        call wp4est_nodes_del()
        call wp4est_mesh_del()
        call wp4est_ghost_del()
-    else
-       call neko_error('p4est not initialised')
-    end if
 
     return
   end subroutine p4_mesh_import_data
@@ -1223,7 +1197,7 @@ contains
     ! initialise htable
     call htpts%init(4, idx)
     allocate(pvmap(nvert, nelv), pnmap(nvert*nelv), pncoord(dim, nvert*nelv))
-    pvmap = -1 
+    pvmap = -1
     do il = 1, nelv
        do jl = 1, nvert
           ! get element vertex coordinates
@@ -1563,7 +1537,7 @@ contains
     return
   end subroutine p4_edge_get
 
-  ! This routine provides information about sets of elements that share 
+  ! This routine provides information about sets of elements that share
   ! the same parent and could be destroyed togeter during coarsening step.
   subroutine p4_family_get(p4)
     ! argument list
@@ -1648,7 +1622,7 @@ contains
     if (msh%gdim == 3) then
        ! edge hanging node; global mapping depend on the element position
        do il = 1, nhe
-          itmp = nhf + il 
+          itmp = nhf + il
           msh%points(itmp) = point_t(p4%edhn%coord(:, il), itmp)
        end do
     end if
@@ -2227,36 +2201,35 @@ contains
   end subroutine p4_connect_fill
 #else
 
-  subroutine p4_init(mesh_file, p4, log_threshold)
+  subroutine p4_manager_init(mesh_file, log_threshold)
     character(len=*), intent(in) :: mesh_file
-    class(mesh_import_t), allocatable, intent(out) :: p4
     integer, intent(in), optional :: log_threshold
 
     call neko_error('NEKO needs to be built with P4EST support')
-  end subroutine p4_init
+  end subroutine p4_manager_init
 
-  subroutine p4_finalise(p4, log_priority)
-    class(mesh_import_t), allocatable, intent(inout) :: p4
+  subroutine p4_manager_free(log_priority)
     integer, intent(in), optional :: log_priority
 
     call neko_error('NEKO needs to be built with P4EST support')
-  end subroutine p4_finalise
+  end subroutine p4_manager_free
 
-  subroutine p4_msh_get(msh, p4)
+  subroutine p4_msh_get(this, msh)
+    class(p4_mesh_import_t), intent(inout) :: p4
     type(mesh_t), intent(inout) :: msh
-    class(mesh_import_t), intent(inout) :: p4
 
     call neko_error('NEKO needs to be built with P4EST support')
     return
   end subroutine p4_msh_get
 
-  subroutine p4_refine(ref_mark, el_gidx, msh_trs, level_max, ifmod, msh_rcn, p4)
+  subroutine p4_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
+       &ifmod, msh_rcn)
+    class(p4_mesh_import_t), intent(inout) :: this
     integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
-    type(p4_msh_trs_t), intent(in) :: msh_trs
+    type(mesh_manager_transfer_t), intent(in) :: msh_trs
     integer(i4), intent(in) :: level_max
     logical, intent(out) :: ifmod
-    type(p4_msh_rcs_t), intent(out) :: msh_rcn
-    class(mesh_import_t), intent(inout) :: p4
+    type(mesh_reconstruct_transfer_t), intent(out) :: msh_rcn
 
     call neko_error('NEKO needs to be built with P4EST support')
     return
@@ -2264,7 +2237,8 @@ contains
 
 #endif
 
-  ! Following stuff should be in math, but right now there is no clear division of routines as
+  ! Following stuff should be in math, but right now there is no clear
+  ! division of routines as
   ! flipv, swap and reord are not in math. For now I leave it here
   !> Use Heap Sort (p 231 Num. Rec., 1st Ed.)
   subroutine sorti4(a, ind, n)
@@ -2281,7 +2255,7 @@ contains
 
     l = n/2+1
     ir = n
-    do while (.true.) 
+    do while (.true.)
        if (l.gt.1) then
           l=l-1
           aa  = a  (l)
@@ -2300,7 +2274,7 @@ contains
        endif
        i=l
        j=l+l
-       do while (j .le. ir) 
+       do while (j .le. ir)
           if (j.lt.ir) then
              if ( a(j).lt.a(j+1) ) j=j+1
           endif
@@ -2320,7 +2294,7 @@ contains
 
   !> sort the array acording to ind vector
   subroutine swapi4(b, ind, n)
-    integer, intent(in) :: n      
+    integer, intent(in) :: n
     integer(i4), intent(inout) :: b(n)
     integer, intent(inout) :: ind(n)
     integer(i4) :: temp(n)
@@ -2338,7 +2312,7 @@ contains
 
   !> reorder the array - inverse of swap
   subroutine reordi4(b, ind, n)
-    integer, intent(in) :: n      
+    integer, intent(in) :: n
     integer(i4), intent(inout) :: b(n)
     integer, intent(inout) :: ind(n)
     integer(i4) :: temp(n)

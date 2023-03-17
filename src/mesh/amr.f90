@@ -1,13 +1,15 @@
 !> Main interface for h-type amr in neko
 module amr
   use mpi_f08
-  use mesh_import
   use num_types
   use comm
   use logger
   use parameters
   use mxm_wrapper
   use speclib
+  use mesh_import
+  use mesh_manager
+  use mesh_redistribute
   use p4est
   use mesh
   use fluid_method
@@ -17,7 +19,8 @@ module amr
   implicit none
 
   private
-  public :: amrrefmark, amr_refine, amr_init, amr_finalise, amr_rcn_init, amr_rcn_free
+  public :: amrrefmark, amr_refine, amr_init, amr_finalise, &
+       & amr_rcn_init, amr_rcn_free
 
   ! type for fields reconstruction (refinement/transfer/coarsening)
   type amr_rcn_t
@@ -36,7 +39,8 @@ module amr
      real(dp), allocatable, dimension(:,:,:) :: y_fn_to_cr, y_fn_to_crT
      real(dp), allocatable, dimension(:,:,:) :: z_fn_to_cr, z_fn_to_crT
      ! point multiplicity; use for coarsening after children face summation
-     ! for now I assume lx=ly=lz; in genera there shold be 3 face and edge arrays
+     ! for now I assume lx=ly=za
+     ! in general there should be 3 face and edge arrays
      ! element
      real(dp), allocatable, dimension(:,:,:) :: el_mult
      ! face
@@ -45,13 +49,13 @@ module amr
      real(dp), allocatable, dimension(:) :: ed_mult
 
      ! p4est <=> neko distribution mapping
-     type(p4_msh_trs_t) :: msh_trs
+     type(mesh_manager_transfer_t) :: msh_trs
 
      ! element reconstruction data
-     type(p4_msh_rcn_t) :: msh_rcn
+     type(mesh_reconstruct_transfer_t) :: msh_rcn
 
-     ! mesh data imported from a mesh manager
-     class(mesh_import_t), allocatable :: msh_imp
+     ! mesh manager and imported data
+     type(mesh_manager_t) :: msh_mngr
 
      ! work space
      real(dp), allocatable, dimension(:,:,:,:) :: tmp
@@ -59,7 +63,7 @@ module amr
 
   type(amr_rcn_t), save :: amr_rcn
 
-  !> Abstract interface for user defined check functions
+  !> Abstract interface for user defined amr refinement flagging functions
   abstract interface
      subroutine amrrefmark(refflag, tstep, msh, param)
        import mesh_t
@@ -83,11 +87,11 @@ contains
     character(len=*), intent(in) :: mesh_file
     type(mesh_t), intent(inout) :: msh
 
-    ! for now everyhing is done assuming p4est to be a mesh mamager
-    call p4_init(mesh_file, amr_rcn%msh_imp)
+    ! set up mesh manager
+    amr_rcn%msh_mngr = mesh_manager_t(mesh_file)
 
     ! import mesh
-    call p4_msh_get(msh, amr_rcn%msh_imp)
+    call amr_rcn%msh_mngr%msh_imp%msh_get(msh)
 
     return
   end subroutine amr_init
@@ -95,7 +99,7 @@ contains
   !> Finalise mesh manager and clean memory
   subroutine amr_finalise()
     ! for now I assume p4est is a mesh manager
-    call p4_finalise(amr_rcn%msh_imp)
+    call amr_rcn%msh_mngr%free()
 
     return
   end subroutine amr_finalise
@@ -595,13 +599,13 @@ contains
     do il = 1, msh%nelv
        el_gidx(il) = msh%offset_el + il
     end do
-    call p4_refine(ref_mark, el_gidx, amr_rcn%msh_trs, level_max, ifmod, &
-         & amr_rcn%msh_rcn, amr_rcn%msh_imp)
+    call amr_rcn%msh_mngr%msh_imp%refine(ref_mark, el_gidx, amr_rcn%msh_trs,&
+         & level_max, ifmod,  amr_rcn%msh_rcn)
     deallocate(el_gidx)
 
     if (ifmod)  then
        ! Import mesh from p4est to neko
-       call p4_msh_get(msh, amr_rcn%msh_imp)
+       call amr_rcn%msh_mngr%msh_imp%msh_get(msh)
 
 !!$       ! PLACE FOR NEW MESH PARTITIONING
 !!$

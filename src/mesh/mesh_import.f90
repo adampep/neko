@@ -31,38 +31,52 @@
 ! POSSIBILITY OF SUCH DAMAGE.
 !
 module mesh_import
+  use num_types
+  use mesh_redistribute
+  use mesh
   implicit none
   private
-  
+
   !> Base type for mesh data import from mesh managers
-  type, public, abstract :: mesh_import_t 
-     logical, private :: initialised_ = .false. !< Mesh manager initialisation flag
+  type, public, abstract :: mesh_import_t
    contains
-     procedure, pass(this) :: initialised => manager_init
-     procedure, pass(this) :: set_init => manager_set_init
-     procedure, pass(this) :: free => manager_free
+     procedure(mesh_im_extract), pass(this), deferred :: msh_get
+     procedure(mesh_im_refine), pass(this), deferred :: refine
+     procedure(mesh_im_free), pass(this), deferred :: free
   end type mesh_import_t
 
+  abstract interface
+     subroutine mesh_im_extract(this, msh)
+       import :: mesh_import_t
+       import :: mesh_t
+       class(mesh_import_t), intent(inout) :: this
+       type(mesh_t), intent(inout) :: msh
+     end subroutine mesh_im_extract
+  end interface
+
+  abstract interface
+     subroutine mesh_im_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
+       &ifmod, msh_rcn)
+       import :: mesh_import_t
+       import :: mesh_manager_transfer_t
+       import :: mesh_reconstruct_transfer_t
+       import :: i4
+       class(mesh_import_t), intent(inout) :: this
+       integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
+       type(mesh_manager_transfer_t), intent(in) :: msh_trs
+       integer(i4), intent(in) :: level_max
+       logical, intent(out) :: ifmod
+       type(mesh_reconstruct_transfer_t), intent(out) :: msh_rcn
+     end subroutine mesh_im_refine
+  end interface
+
+  abstract interface
+     subroutine mesh_im_free(this)
+       import :: mesh_import_t
+       class(mesh_import_t), intent(inout) :: this
+     end subroutine mesh_im_free
+  end interface
+
 contains
-
-  !> Return the mesh manager initialisation flag
-  pure function manager_init(this) result(initialised)
-    class(mesh_import_t), intent(in) :: this
-    logical :: initialised
-    initialised = this%initialised_
-  end function manager_init
-
-  !> Set the mesh manager initialisation flag
-  subroutine manager_set_init(this, initialised)
-    class(mesh_import_t), intent(inout) :: this
-    logical, intent(in) :: initialised
-    this%initialised_ = initialised
-  end subroutine manager_set_init
-
-  !> Set the mesh manager initialisation flag to false
-  subroutine manager_free(this)
-    class(mesh_import_t), intent(inout) :: this
-    this%initialised_ = .false.
-  end subroutine manager_free
 
 end module mesh_import

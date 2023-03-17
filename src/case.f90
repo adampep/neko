@@ -45,7 +45,7 @@ module case
   use parmetis
   use redist
   use sampler
-  use flow_ic    
+  use flow_ic
   use stats
   use file
   use utils
@@ -55,7 +55,7 @@ module case
   use logger
   use jobctrl
   use amr
-  use user_intf  
+  use user_intf
   use scalar_pnpn ! todo directly load the pnpn? can we have other
   implicit none
 
@@ -71,10 +71,10 @@ module case
      type(chkp_output_t) :: f_chkp
      type(mean_flow_output_t) :: f_mf
      type(mean_sqr_flow_output_t) :: f_msqrf
-     type(stats_t) :: q   
+     type(stats_t) :: q
      type(user_t) :: usr
      class(fluid_scheme_t), allocatable :: fluid
-     type(scalar_pnpn_t), allocatable :: scalar 
+     type(scalar_pnpn_t), allocatable :: scalar
   end type case_t
 
 contains

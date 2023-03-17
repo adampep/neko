@@ -201,10 +201,12 @@ scalar/scalar_residual.o : scalar/scalar_residual.f90 config/num_types.o mesh/me
 scalar/scalar_residual_fctry.o : scalar/scalar_residual_fctry.f90 scalar/bcknd/sx/scalar_residual_sx.o scalar/bcknd/cpu/scalar_residual_cpu.o scalar/bcknd/device/scalar_residual_device.o scalar/scalar_residual.o config/neko_config.o 
 scalar/bcknd/cpu/scalar_residual_cpu.o : scalar/bcknd/cpu/scalar_residual_cpu.f90 math/operators.o scalar/scalar_residual.o gs/gather_scatter.o 
 scalar/bcknd/sx/scalar_residual_sx.o : scalar/bcknd/sx/scalar_residual_sx.f90 math/operators.o scalar/scalar_residual.o gs/gather_scatter.o 
-mesh/connectivity.o : mesh/connectivity.f90 config/num_types.o 
-mesh/mesh_import.o : mesh/mesh_import.f90
-mesh/p4est.o : mesh/p4est.F90 mesh/mesh_import.o config/num_types.o mesh/p4est_wrap.o comm/comm.o common/log.o common/utils.o math/math.o adt/tuple.o adt/htable.o common/distdata.o mesh/point.o mesh/quad.o mesh/hex.o mesh/connectivity.o mesh/mesh.o 
-mesh/amr.o : mesh/amr.f90 mesh/mesh_import.o config/num_types.o comm/comm.o common/log.o common/parameters.o math/mxm_wrapper.o sem/speclib.o mesh/p4est.o mesh/mesh.o field/field.o fluid/fluid_method.o fluid/fluid_plan1.o fluid/fluid_plan4.o fluid/fluid_pnpn.o 
+mesh/connectivity.o : mesh/connectivity.f90 config/num_types.o
+mesh/mesh_redistribute.o : mesh/mesh_redistribute.f90 config/num_types.o 
+mesh/mesh_import.o : mesh/mesh_import.f90 config/num_types.o mesh/mesh_redistribute.o mesh/mesh.o 
+mesh/mesh_manager.o : mesh/mesh_manager.f90 config/num_types.o common/log.o common/utils.o mesh/mesh_import.o mesh/p4est.o
+mesh/p4est.o : mesh/p4est.F90 config/num_types.o mesh/p4est_wrap.o comm/comm.o common/log.o common/utils.o math/math.o adt/tuple.o adt/htable.o mesh/mesh_import.o mesh/mesh_redistribute.o common/distdata.o mesh/point.o mesh/quad.o mesh/hex.o mesh/connectivity.o mesh/mesh.o 
+mesh/amr.o : mesh/amr.f90 config/num_types.o comm/comm.o common/log.o common/parameters.o math/mxm_wrapper.o sem/speclib.o mesh/mesh_import.o mesh/mesh_manager.o mesh/mesh_redistribute.o mesh/p4est.o mesh/mesh.o field/field.o fluid/fluid_method.o fluid/fluid_plan1.o fluid/fluid_plan4.o fluid/fluid_pnpn.o 
 scalar/source_scalar.o : scalar/source_scalar.f90 math/bcknd/device/device_math.o device/device.o common/utils.o sem/dofmap.o config/num_types.o config/neko_config.o 
 neko.o : neko.f90 math/vector.o field/field_registry.o sem/cpr.o device/device.o common/jobctrl.o common/signal.o comm/parmetis.o common/user_intf.o common/projection.o math/mathops.o math/operators.o simulation.o io/output.o common/sampler.o case.o config/neko_config.o math/ax.o krylov/precon.o math/ax_helm_fctry.o krylov/precon_fctry.o krylov/krylov_fctry.o bc/dirichlet.o bc/wall.o bc/bc.o sem/coef.o gs/gather_scatter.o comm/mpi_types.o field/field.o io/file.o math/mxm_wrapper.o io/format/map.o field/mesh_field.o mesh/mesh.o adt/tuple.o adt/stack.o adt/uset.o adt/htable.o sem/space.o sem/dofmap.o sem/speclib.o math/math.o common/log.o common/utils.o comm/comm.o common/parameters.o config/num_types.o 
 driver.o : driver.f90 neko.o 
