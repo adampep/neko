@@ -30,7 +30,7 @@
 ! ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ! POSSIBILITY OF SUCH DAMAGE.
 !
-module mesh_geo
+module mesh_geom
   use num_types
   use element
   use point
@@ -39,22 +39,22 @@ module mesh_geo
   implicit none
   private
 
-  public :: mesh_geo_t
+  public :: mesh_geom_t
 
   !> Base type for mesh geometrical information
-  type :: mesh_geo_t
+  type :: mesh_geom_t
      integer(i4) :: nel ! local number of elements
      integer(i4), allocatable, dimension(:,:) :: falg ! face alignment
    contains
-     procedure, pass(this) :: free => mesh_geo_free
-  end type mesh_geo_t
+     procedure, pass(this) :: free => mesh_geom_free
+  end type mesh_geom_t
 
 contains
 
   !> Free memory
-  subroutine mesh_geo_free(this)
+  subroutine mesh_geom_free(this)
     ! argument list
-    class(mesh_geo_t), intent(inout) :: this
+    class(mesh_geom_t), intent(inout) :: this
 
     ! Reset registers
     this%nel = 0
@@ -63,6 +63,6 @@ contains
     if (allocated(this%falg)) deallocate(this%falg)
 
     return
-  end subroutine mesh_geo_free
+  end subroutine mesh_geom_free
 
-end module mesh_geo
+end module mesh_geom

@@ -170,6 +170,11 @@ contains
 
     C%params = params%p
 
+    !
+    ! Setup user defined functions
+    !
+    call C%usr%init()
+
     ! pre-refine the mesh before starting fluid
     ! this should be done for fresh run only (no restart)
     if (amr.and.C%params%restart_file=='') then
@@ -179,7 +184,7 @@ contains
          ! perform refinement as many times as max refinement level
          ! mark refinment by negative tstep
          do il = 1, C%params%amrlmax
-            allocate(ref_mark(C%msh%nelv))
+            allocate(ref_mark(C%msh%nelv), source = 0)
             call C%usr%amr_refmark(ref_mark, -il, C%msh, C%params)
             call amr_refine(C%msh, C%params, ref_mark)
             deallocate(ref_mark)
@@ -197,11 +202,6 @@ contains
        call neko_log%end_section()       
     end if
 
-
-    !
-    ! Setup user defined functions
-    !
-    call C%usr%init()
     call C%usr%user_mesh_setup(C%msh)
     
     !

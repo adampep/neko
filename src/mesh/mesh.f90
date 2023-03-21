@@ -51,6 +51,7 @@ module mesh
   use uset
   use curve
   use mesh_conn
+  use mesh_geom
   implicit none
 
   integer, public, parameter :: NEKO_MSH_MAX_ZLBLS = 20 !< Max num. zone labels
@@ -116,10 +117,10 @@ module mesh
      !! that is applied to all x,y,z coordinates generated with this mesh
      procedure(mesh_deform), pass(msh), pointer  :: apply_deform => null()
 
-     ! mesh connectivity
      ! this is added due to nonconforming meshes that are difficult to
      ! represent with current strategy
-     class(mesh_conn_t), allocatable :: msh_conn
+     class(mesh_conn_t), allocatable :: msh_conn ! mesh connectivity
+     class(mesh_geom_t), allocatable :: msh_geom ! mesh geometry
   end type mesh_t
 
   abstract interface
@@ -374,6 +375,11 @@ contains
     if (allocated(m%msh_conn)) then
        call m%msh_conn%free()
        deallocate(m%msh_conn)
+    end if
+
+    if (allocated(m%msh_geom)) then
+       call m%msh_geom%free()
+       deallocate(m%msh_geom)
     end if
     
   end subroutine mesh_free
