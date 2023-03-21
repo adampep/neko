@@ -50,7 +50,7 @@ module mesh
   use math
   use uset
   use curve
-  use connectivity
+  use mesh_conn
   implicit none
 
   integer, public, parameter :: NEKO_MSH_MAX_ZLBLS = 20 !< Max num. zone labels
@@ -117,8 +117,9 @@ module mesh
      procedure(mesh_deform), pass(msh), pointer  :: apply_deform => null()
 
      ! mesh connectivity
-     ! this is added due to nonconforming meshes that are difficult to represent with current strategy
-     class(connectivity_t), allocatable :: connect
+     ! this is added due to nonconforming meshes that are difficult to
+     ! represent with current strategy
+     class(mesh_conn_t), allocatable :: msh_conn
   end type mesh_t
 
   abstract interface
@@ -370,9 +371,9 @@ contains
     call m%sympln%free()
     call m%periodic%free()
 
-    if (allocated(m%connect)) then
-       call m%connect%free()
-       deallocate(m%connect)
+    if (allocated(m%msh_conn)) then
+       call m%msh_conn%free()
+       deallocate(m%msh_conn)
     end if
     
   end subroutine mesh_free

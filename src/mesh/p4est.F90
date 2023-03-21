@@ -8,18 +8,18 @@ module p4est
   use math
   use tuple
   use htable
-  use mesh_import
+  use mesh_cnstr
   use mesh_redistribute
   use distdata
   use point
   use quad
   use hex
-  use connectivity
+  use mesh_conn
   use mesh
   implicit none
 
   private
-  public :: p4_mesh_import_t, p4_manager_init, p4_manager_free
+  public :: p4_mesh_cnstr_t, p4_manager_init, p4_manager_free
 
   ! Following node types contain geometrical and connectivity information
   ! for the mesh.
@@ -285,7 +285,7 @@ module p4est
   end type p4_element_t
 
   ! Type combining all the mesh information that can be extracted from p4est
-  type, extends(mesh_import_t) :: p4_mesh_import_t
+  type, extends(mesh_cnstr_t) :: p4_mesh_cnstr_t
      ! general information
      integer :: dim, maxl, maxg ! dimension, local and global max refinement
                                 ! level
@@ -301,8 +301,8 @@ module p4est
    contains
      procedure, public, pass(this) :: msh_get => p4_msh_get
      procedure, public, pass(this) :: refine => p4_refine
-     procedure, public, pass(this) :: free => p4_mesh_import_free
-  end type p4_mesh_import_t
+     procedure, public, pass(this) :: free => p4_mesh_cnstr_free
+  end type p4_mesh_cnstr_t
 
   ! connectivity parameter arrays
   ! face vertices
@@ -668,9 +668,9 @@ contains
     return
   end subroutine p4_element_free
 
-  subroutine p4_mesh_import_free(this)
+  subroutine p4_mesh_cnstr_free(this)
     ! argument list
-    class(p4_mesh_import_t), intent(inout) :: this
+    class(p4_mesh_cnstr_t), intent(inout) :: this
 
     ! Reset registers
     this%dim = 0
@@ -685,7 +685,7 @@ contains
     call this%elem%free()
 
     return
-  end subroutine p4_mesh_import_free
+  end subroutine p4_mesh_cnstr_free
 
 #ifdef HAVE_P4EST
   subroutine p4_manager_init(mesh_file, log_threshold)
@@ -765,105 +765,102 @@ contains
 
   subroutine p4_msh_get(this, msh)
     ! argument list
-    class(p4_mesh_import_t), intent(inout) :: this
+    class(p4_mesh_cnstr_t), intent(inout) :: this
     type(mesh_t), intent(inout) :: msh
     ! local variables
     integer(i4) :: il
 
-!    select type (this)
-!    type is(p4_mesh_import_t)
-       call neko_log%section("Mesh")
-       ! import data from p4est
-       call p4_mesh_import_data(this)
+    call neko_log%section("Mesh")
+    ! import data from p4est
+    call p4_mesh_cnstr_data(this)
 
-       call neko_log%message('Build the mesh')
+    call neko_log%message('Build the mesh')
 
-       ! What follows is just a hack, as I'm trying to minimise
-       ! changes outside this file
-       ! There are some differences in a concept, so not everything
-       ! can be filled in properly
+    ! What follows is just a hack, as I'm trying to minimise
+    ! changes outside this file
+    ! There are some differences in a concept, so not everything
+    ! can be filled in properly
 
-       ! Initialise mesh type
-       call mesh_free(msh)
-       ! general mesh info
-       msh%gdim = this%dim ! grid dimension
-       ! general element info
-       msh%nelv = this%elem%nelv ! local number of elements
-       msh%glb_nelv = this%elem%nelgt ! global number of elelments
-       msh%offset_el = this%elem%nelgto ! global element offset;
-       ! NOT NEEDED IN THIS VERSION
-       msh%npts = 2**this%dim ! number of element vertices
+    ! Initialise mesh type
+    call mesh_free(msh)
+    ! general mesh info
+    msh%gdim = this%dim ! grid dimension
+    ! general element info
+    msh%nelv = this%elem%nelv ! local number of elements
+    msh%glb_nelv = this%elem%nelgt ! global number of elelments
+    msh%offset_el = this%elem%nelgto ! global element offset;
+    ! NOT NEEDED IN THIS VERSION
+    msh%npts = 2**this%dim ! number of element vertices
 
-       ! Point definition differs so I include here independent points only
-       msh%mpts = this%elem%vert%lnum ! local number of unique vertices
-       ! (independent nodes only)
-       msh%mfcs = this%elem%face%lnum ! local number of unique faces
-       msh%meds = this%elem%edge%lnum ! local number of unique edges
+    ! Point definition differs so I include here independent points only
+    msh%mpts = this%elem%vert%lnum ! local number of unique vertices
+    ! (independent nodes only)
+    msh%mfcs = this%elem%face%lnum ! local number of unique faces
+    msh%meds = this%elem%edge%lnum ! local number of unique edges
 
-       msh%glb_mpts = this%elem%vert%gnum ! global number of unique vertices
-       msh%glb_mfcs = this%elem%face%gnum ! global number of unique faces
-       msh%glb_meds = this%elem%edge%gnum ! global number of unique edges
+    msh%glb_mpts = this%elem%vert%gnum ! global number of unique vertices
+    msh%glb_mfcs = this%elem%face%gnum ! global number of unique faces
+    msh%glb_meds = this%elem%edge%gnum ! global number of unique edges
 
-       ! this dosen't seem to be used in original version and
-       ! I do not need it for p4est either
-       !msh%max_pts_id =
+    ! this doesn't seem to be used in original version and
+    ! I do not need it for p4est either
+    !msh%max_pts_id =
 
-       ! If there are any elements
-       if (this%elem%nelv > 0) then
+    ! If there are any elements
+    if (this%elem%nelv > 0) then
 
-          ! Fill in point/node information
-          call p4_nodes_fill(msh, this)
+       ! Fill in point/node information
+       call p4_nodes_fill(msh, this)
 
-          ! Fill in element information
-          call p4_element_fill(msh, this)
+       ! Fill in element information
+       call p4_element_fill(msh, this)
 
-          ! msh%htp - not used as hanging node global id can be
-          ! identified for a given element only
-          ! msh%htf - not used as faces global id is already provided by p4est
-          ! msh%hte - not used as edge global id is already provided by p4est
+       ! msh%htp - not used as hanging node global id can be
+       ! identified for a given element only
+       ! msh%htf - not used as faces global id is already provided by p4est
+       ! msh%hte - not used as edge global id is already provided by p4est
 
-          ! Fill in neighbour information
-          call p4_neighbour_fill(msh, this)
+       ! Fill in neighbour information
+       call p4_neighbour_fill(msh, this)
 
-          ! Fill in distdata information
-          call p4_distdata_fill(msh, this)
+       ! Fill in distdata information
+       call p4_distdata_fill(msh, this)
 
-          ! Fill in boundary condition information
-          call p4_bc_fill(msh, this)
+       ! Fill in boundary condition information
+       call p4_bc_fill(msh, this)
 
 
-          ! curved edges
-          !! @todo curves for p4est
-          call msh%curve%init(msh%nelv)
-          ! P4EST DOES NOT PROVIDE CURVATURE DATA DIRECTLY,
-          ! SO LET'S LEAVE IT FOR NOW
-          ! this data should be loaded from another file??
-          !call mesh_mark_curve_element(msh, el_idx, curve_data, type)
+       ! curved edges
+       !! @todo curves for p4est
+       call msh%curve%init(msh%nelv)
+       ! P4EST DOES NOT PROVIDE CURVATURE DATA DIRECTLY,
+       ! SO LET'S LEAVE IT FOR NOW
+       ! this data should be loaded from another file??
+       !call mesh_mark_curve_element(msh, el_idx, curve_data, type)
 
-          ! fill connectivity information
-          call p4_connect_fill(msh, this)
+       ! fill connectivity information
+       call p4_connect_fill(msh, this)
 
-          ! mesh finalisation
-          call mesh_generate_flags(msh) ! deformation flag;
-          ! THIS IS NOT 100% CORRECT
+       ! mesh finalisation
+       call mesh_generate_flags(msh) ! deformation flag;
+       ! THIS IS NOT 100% CORRECT
 
-          call msh%wall%finalize() ! BC finalisation
-          call msh%inlet%finalize()
-          call msh%outlet%finalize()
-          call msh%outlet_normal%finalize()
-          call msh%sympln%finalize()
-          call msh%periodic%finalize()
-          do il = 1, NEKO_MSH_MAX_ZLBLS
-             call msh%labeled_zones(il)%finalize()
-          end do
-          call msh%curve%finalize() ! curved sides finalisation
-       end if
+       call msh%wall%finalize() ! BC finalisation
+       call msh%inlet%finalize()
+       call msh%outlet%finalize()
+       call msh%outlet_normal%finalize()
+       call msh%sympln%finalize()
+       call msh%periodic%finalize()
+       do il = 1, NEKO_MSH_MAX_ZLBLS
+          call msh%labeled_zones(il)%finalize()
+       end do
+       call msh%curve%finalize() ! curved sides finalisation
+    end if
 
-       msh%lconn = .true.
-       msh%lnumr = .true.
+    msh%lconn = .true.
+    msh%lnumr = .true.
 
-       call neko_log%end_section()
-!    end select
+    call neko_log%end_section()
 
     return
   end subroutine p4_msh_get
@@ -872,7 +869,7 @@ contains
   subroutine p4_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
        &ifmod, msh_rcn)
     ! argument list
-    class(p4_mesh_import_t), intent(inout) :: this
+    class(p4_mesh_cnstr_t), intent(inout) :: this
     integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
     type(mesh_manager_transfer_t), intent(in) :: msh_trs
     integer(i4), intent(in) :: level_max
@@ -899,85 +896,82 @@ contains
     ! 1 - check if quadrant data are identical
     integer(i4), parameter :: p4test = 1
 
-!    select type (this)
-!    type is(p4_mesh_import_t)
-       itmp = size(ref_mark)
-       if (itmp /= size(el_gidx)) call neko_error('Inconsistent array size')
+    itmp = size(ref_mark)
+    if (itmp /= size(el_gidx)) call neko_error('Inconsistent array size')
 
-       ! put refinement mark in p4est
-       allocate(pref_mark(this%elem%nelv))
-       ! PLACE FOR DATA DISTRIBUTION (NEKO => P4EST) using
-       ! mesh_manager_transfer_t
-       ! in general itmp can be different than this%elem%nelv, but for now
-       ! they are the same
-       pref_mark(1:itmp) = ref_mark(1:itmp)
-       ! PLACE FOR LOCAL CONSISTENCY CHECKS
-       call wp4est_refm_put(c_loc(pref_mark))
+    ! put refinement mark in p4est
+    allocate(pref_mark(this%elem%nelv))
+    ! PLACE FOR DATA DISTRIBUTION (NEKO => P4EST) using
+    ! mesh_manager_transfer_t
+    ! in general itmp can be different than this%elem%nelv, but for now
+    ! they are the same
+    pref_mark(1:itmp) = ref_mark(1:itmp)
+    ! PLACE FOR LOCAL CONSISTENCY CHECKS
+    call wp4est_refm_put(c_loc(pref_mark))
 
-       ! put element distribution info in p4est
-       allocate(pel_gnum(this%elem%nelv), pel_lnum(this%elem%nelv),&
-            & pel_nid(this%elem%nelv))
-       allocate(nel_gnum(itmp), nel_lnum(itmp), nel_nid(itmp))
-       !
-       do il = 1, itmp
-          nel_gnum(il) = el_gidx(il)
-          nel_lnum(il) = il
-       end do
-       nel_nid(:) = pe_rank
-       ! PLACE FOR DATA DISTRIBUTION (NEKO=> P4EST) using
-       ! mesh_manager_transfer_t
-       ! in general itmp can be different than this%elem%nelv, but for now
-       ! they are the same
-       pel_gnum(1:itmp) = nel_gnum(1:itmp)
-       pel_lnum(1:itmp) = nel_lnum(1:itmp)
-       pel_nid(1:itmp) = nel_nid(1:itmp)
-       ! this possibly could be reconstructed from mesh_manager_transfer_t,
-       ! so no communication would be necessary
-       call wp4est_egmap_put(c_loc(pel_gnum), c_loc(pel_lnum), c_loc(pel_nid))
+    ! put element distribution info in p4est
+    allocate(pel_gnum(this%elem%nelv), pel_lnum(this%elem%nelv),&
+         & pel_nid(this%elem%nelv))
+    allocate(nel_gnum(itmp), nel_lnum(itmp), nel_nid(itmp))
+    !
+    do il = 1, itmp
+       nel_gnum(il) = el_gidx(il)
+       nel_lnum(il) = il
+    end do
+    nel_nid(:) = pe_rank
+    ! PLACE FOR DATA DISTRIBUTION (NEKO=> P4EST) using
+    ! mesh_manager_transfer_t
+    ! in general itmp can be different than this%elem%nelv, but for now
+    ! they are the same
+    pel_gnum(1:itmp) = nel_gnum(1:itmp)
+    pel_lnum(1:itmp) = nel_lnum(1:itmp)
+    pel_nid(1:itmp) = nel_nid(1:itmp)
+    ! this possibly could be reconstructed from mesh_manager_transfer_t,
+    ! so no communication would be necessary
+    call wp4est_egmap_put(c_loc(pel_gnum), c_loc(pel_lnum), c_loc(pel_nid))
 
-       ! perform local refine/coarsen/balance on p4est side
-       call wp4est_tree_copy(p4test)
-       call wp4est_refine(level_max)
-       call wp4est_coarsen()
-       call wp4est_balance()
-       ! perform partitioning on p4est side
-       call wp4est_part(p4part)
-       call wp4est_tree_check(itmp, p4test)
+    ! perform local refine/coarsen/balance on p4est side
+    call wp4est_tree_copy(p4test)
+    call wp4est_refine(level_max)
+    call wp4est_coarsen()
+    call wp4est_balance()
+    ! perform partitioning on p4est side
+    call wp4est_part(p4part)
+    call wp4est_tree_check(itmp, p4test)
 
-       if (itmp == 0 ) then
-          ifmod = .true.
-       else
-          ifmod = .false.
-       end if
+    if (itmp == 0 ) then
+       ifmod = .true.
+    else
+       ifmod = .false.
+    end if
 
-       ! if mesh was modified extract data to restructure elements
-       if (ifmod) then
-          itmp = 2**this%dim ! number of vertices
-          allocate(elgl_map(3, itmp*this%elem%nelv), &
-               & elgl_rfn(5, itmp*this%elem%nelv), &
-               & elgl_crs(4, itmp, this%elem%nelv))
-          call wp4est_msh_get_hst(map_nr, rfn_nr, crs_nr, c_loc(elgl_map), &
-               & c_loc(elgl_rfn), c_loc(elgl_crs))
-          ! move data
-          msh_rcn%map_nr = map_nr
-          msh_rcn%rfn_nr = rfn_nr
-          msh_rcn%crs_nr = crs_nr
-          call MOVE_ALLOC(elgl_map, msh_rcn%elgl_map)
-          call MOVE_ALLOC(elgl_rfn, msh_rcn%elgl_rfn)
-          call MOVE_ALLOC(elgl_crs, msh_rcn%elgl_crs)
-       end if
+    ! if mesh was modified extract data to restructure elements
+    if (ifmod) then
+       itmp = 2**this%dim ! number of vertices
+       allocate(elgl_map(3, itmp*this%elem%nelv), &
+            & elgl_rfn(5, itmp*this%elem%nelv), &
+            & elgl_crs(4, itmp, this%elem%nelv))
+       call wp4est_msh_get_hst(map_nr, rfn_nr, crs_nr, c_loc(elgl_map), &
+            & c_loc(elgl_rfn), c_loc(elgl_crs))
+       ! move data
+       msh_rcn%map_nr = map_nr
+       msh_rcn%rfn_nr = rfn_nr
+       msh_rcn%crs_nr = crs_nr
+       call MOVE_ALLOC(elgl_map, msh_rcn%elgl_map)
+       call MOVE_ALLOC(elgl_rfn, msh_rcn%elgl_rfn)
+       call MOVE_ALLOC(elgl_crs, msh_rcn%elgl_crs)
+    end if
 
-       ! free memory
-       deallocate(pref_mark, pel_gnum, pel_lnum, pel_nid, nel_gnum,&
-            & nel_lnum, nel_nid)
-!    end select
+    ! free memory
+    deallocate(pref_mark, pel_gnum, pel_lnum, pel_nid, nel_gnum,&
+         & nel_lnum, nel_nid)
 
     return
   end subroutine p4_refine
 
-  subroutine p4_mesh_import_data(p4)
+  subroutine p4_mesh_cnstr_data(p4)
     ! argument list
-    type(p4_mesh_import_t), intent(inout) :: p4
+    type(p4_mesh_cnstr_t), intent(inout) :: p4
     ! local variables
     character(len=LOG_SIZE) :: log_buf
     integer :: ierr, nvert, nface, nedge
@@ -1168,12 +1162,12 @@ contains
        call wp4est_ghost_del()
 
     return
-  end subroutine p4_mesh_import_data
+  end subroutine p4_mesh_cnstr_data
 
   ! this subroutine should be adjusted for 2D; not done yet
   subroutine p4_node_periodic_get(p4, vcoord, dim, nvert, nelv)
     ! argument list
-    type(p4_mesh_import_t), intent(inout) :: p4
+    type(p4_mesh_cnstr_t), intent(inout) :: p4
     integer, intent(in) :: dim, nvert, nelv
     real(dp), dimension(dim, nvert, nelv), intent(in) :: vcoord
     !local variables
@@ -1276,7 +1270,7 @@ contains
   ! This routine provides global edge numbering and orientation
   subroutine p4_edge_get(p4)
     ! argument list
-    type(p4_mesh_import_t), intent(inout) :: p4
+    type(p4_mesh_cnstr_t), intent(inout) :: p4
     !local variables
     integer, parameter :: nface = 6, nedge = 12
     integer :: il, jl, kl, itmp, ierr, nlnode, last, nlown
@@ -1541,7 +1535,7 @@ contains
   ! the same parent and could be destroyed togeter during coarsening step.
   subroutine p4_family_get(p4)
     ! argument list
-    type(p4_mesh_import_t), intent(inout) :: p4
+    type(p4_mesh_cnstr_t), intent(inout) :: p4
     !local variables
     integer(i4) :: nvert, ierr, il, jl
     integer(i8) :: itmp8
@@ -1584,11 +1578,11 @@ contains
     return
   end subroutine p4_family_get
 
-  ! Fill the mesh type with node information from p4_mesh_import type
+  ! Fill the mesh type with node information from p4_mesh_cnstr type
   subroutine p4_nodes_fill(msh, p4)
     ! argument list
     type(mesh_t), intent(inout) :: msh
-    type(p4_mesh_import_t), intent(in) :: p4
+    type(p4_mesh_cnstr_t), intent(in) :: p4
     !local variables
     integer(i4) :: il
     integer(i4) :: itmp
@@ -1630,11 +1624,11 @@ contains
     return
   end subroutine p4_nodes_fill
 
-  ! Fill the mesh type with element information from p4_mesh_import type
+  ! Fill the mesh type with element information from p4_mesh_cnstr type
   subroutine p4_element_fill(msh, p4)
     ! argument list
     type(mesh_t), intent(inout) :: msh
-    type(p4_mesh_import_t), intent(in) :: p4
+    type(p4_mesh_cnstr_t), intent(in) :: p4
     !local variables
     integer(i4) :: il
     integer(i4) :: itmp
@@ -1678,11 +1672,11 @@ contains
     return
   end subroutine p4_element_fill
 
-  ! Fill the mesh type with neighbour information from p4_mesh_import type
+  ! Fill the mesh type with neighbour information from p4_mesh_cnstr type
   subroutine p4_neighbour_fill(msh, p4)
     ! argument list
     type(mesh_t), intent(inout) :: msh
-    type(p4_mesh_import_t), intent(in) :: p4
+    type(p4_mesh_cnstr_t), intent(in) :: p4
 
     ! get vertex neighbours; not used
     !call p4_vertex_neighbour_fill(msh, p4)
@@ -1702,7 +1696,7 @@ contains
   subroutine p4_vertex_neighbour_fill(msh, p4)
     ! argument list
     type(mesh_t), intent(inout) :: msh
-    type(p4_mesh_import_t), intent(in) :: p4
+    type(p4_mesh_cnstr_t), intent(in) :: p4
     !local variables
     integer(i4) :: il, jl, kl, ll, ml
     integer(i4) :: itmp, ierr
@@ -1820,7 +1814,7 @@ contains
   subroutine p4_face_neighbour_fill(msh, p4)
     ! argument list
     type(mesh_t), intent(inout) :: msh
-    type(p4_mesh_import_t), intent(in) :: p4
+    type(p4_mesh_cnstr_t), intent(in) :: p4
     !local variables
     integer(i4) :: il, jl
     integer(i4) :: itmp, ierr
@@ -1963,7 +1957,7 @@ contains
   subroutine p4_rank_neighbour_fill(msh, p4)
     ! argument list
     type(mesh_t), intent(inout) :: msh
-    type(p4_mesh_import_t), intent(in) :: p4
+    type(p4_mesh_cnstr_t), intent(in) :: p4
     !local variables
     integer(i4) :: il, jl, src, dst
     type(stack_i4_t) :: neigh_order
@@ -2011,11 +2005,11 @@ contains
     return
   end subroutine p4_rank_neighbour_fill
 
-  ! Fill the mesh type with distdata information from p4_mesh_import type
+  ! Fill the mesh type with distdata information from p4_mesh_cnstr type
   subroutine p4_distdata_fill(msh, p4)
     ! argument list
     type(mesh_t), intent(inout) :: msh
-    type(p4_mesh_import_t), intent(in) :: p4
+    type(p4_mesh_cnstr_t), intent(in) :: p4
     !local variables
     integer(i4) :: il, jl, kl
     integer(i4) :: itmp
@@ -2089,11 +2083,11 @@ contains
     return
   end subroutine p4_distdata_fill
 
-  ! Fill the mesh type with boundarry condition information from p4_mesh_import type
+  ! Fill the mesh type with boundarry condition information from p4_mesh_cnstr type
   subroutine p4_bc_fill(msh, p4)
     ! argument list
     type(mesh_t), intent(inout) :: msh
-    type(p4_mesh_import_t), intent(in) :: p4
+    type(p4_mesh_cnstr_t), intent(in) :: p4
     !local variables
     integer(i4) :: il, jl, ie, if
     integer(i4) :: itmp
@@ -2131,7 +2125,7 @@ contains
              ! IT WOULD BE SUFFICIENT TO HAVE THIS ZONE TO BE LIKE ANY OTHER ONE
              call mesh_mark_periodic_facet(msh, if, ie, p_f, p_e, pt_id)
              ! There is no need to call mesh apply, as I do not stick to
-             ! node numberring anyhow.
+             ! node numbering anyhow.
           case (1:NEKO_MSH_MAX_ZLBLS) ! everything elese marked as labeled bc
              itmp = p4%elem%bc(jl,il) ! once again problem with inout attribute
              call mesh_mark_labeled_facet(msh, if, ie, itmp)
@@ -2142,59 +2136,59 @@ contains
     return
   end subroutine p4_bc_fill
 
-  ! Fill the mesh type with global connectivity information from p4_mesh_import type
+  ! Fill the mesh type with global connectivity information from p4_mesh_cnstr type
   subroutine p4_connect_fill(msh, p4)
     ! argument list
     type(mesh_t), intent(inout) :: msh
-    type(p4_mesh_import_t), intent(in) :: p4
+    type(p4_mesh_cnstr_t), intent(in) :: p4
     !local variables
 
     ! allocate connectivity type
-    if (allocated(msh%connect)) then
-       call msh%connect%free()
-       deallocate(msh%connect)
+    if (allocated(msh%msh_conn)) then
+       call msh%msh_conn%free()
+       deallocate(msh%msh_conn)
     end if
-    allocate(connectivity_t :: msh%connect)
+    allocate(mesh_conn_t :: msh%msh_conn)
 
     ! Set mesh nonconformity flag
-    call msh%connect%set_nonconf(.true.)
+    call msh%msh_conn%set_nonconf(.true.)
 
     ! copy data
-    msh%connect%nel = p4%elem%nelt
+    msh%msh_conn%nel = p4%elem%nelt
 
-    allocate(msh%connect%falg, source = p4%elem%falg)
-    allocate(msh%connect%ealg, source = p4%elem%ealg)
+    allocate(msh%msh_conn%falg, source = p4%elem%falg)
+    allocate(msh%msh_conn%ealg, source = p4%elem%ealg)
 
-    msh%connect%vert%lnum = p4%elem%vert%lnum
-    msh%connect%vert%lown = p4%elem%vert%lown
-    msh%connect%vert%goff = p4%elem%vert%goff
-    msh%connect%vert%gnum = p4%elem%vert%gnum
-    allocate(msh%connect%vert%lmap, source = p4%elem%vert%lmap)
-    allocate(msh%connect%vert%lgidx, source = p4%elem%vert%lgidx)
-    allocate(msh%connect%vert%lrank, source = p4%elem%vert%lrank)
-    allocate(msh%connect%vert%lshare, source = p4%elem%vert%lshare)
-    allocate(msh%connect%vert%loff, source = p4%elem%vert%loff)
+    msh%msh_conn%vert%lnum = p4%elem%vert%lnum
+    msh%msh_conn%vert%lown = p4%elem%vert%lown
+    msh%msh_conn%vert%goff = p4%elem%vert%goff
+    msh%msh_conn%vert%gnum = p4%elem%vert%gnum
+    allocate(msh%msh_conn%vert%lmap, source = p4%elem%vert%lmap)
+    allocate(msh%msh_conn%vert%lgidx, source = p4%elem%vert%lgidx)
+    allocate(msh%msh_conn%vert%lrank, source = p4%elem%vert%lrank)
+    allocate(msh%msh_conn%vert%lshare, source = p4%elem%vert%lshare)
+    allocate(msh%msh_conn%vert%loff, source = p4%elem%vert%loff)
 
-    msh%connect%face%lnum = p4%elem%face%lnum
-    msh%connect%face%lown = p4%elem%face%lown
-    msh%connect%face%goff = p4%elem%face%goff
-    msh%connect%face%gnum = p4%elem%face%gnum
-    allocate(msh%connect%face%lmap, source = p4%elem%face%lmap)
-    allocate(msh%connect%face%lgidx, source = p4%elem%face%lgidx)
-    allocate(msh%connect%face%lrank, source = p4%elem%face%lrank)
-    allocate(msh%connect%face%lshare, source = p4%elem%face%lshare)
-    allocate(msh%connect%face%loff, source = p4%elem%face%loff)
+    msh%msh_conn%face%lnum = p4%elem%face%lnum
+    msh%msh_conn%face%lown = p4%elem%face%lown
+    msh%msh_conn%face%goff = p4%elem%face%goff
+    msh%msh_conn%face%gnum = p4%elem%face%gnum
+    allocate(msh%msh_conn%face%lmap, source = p4%elem%face%lmap)
+    allocate(msh%msh_conn%face%lgidx, source = p4%elem%face%lgidx)
+    allocate(msh%msh_conn%face%lrank, source = p4%elem%face%lrank)
+    allocate(msh%msh_conn%face%lshare, source = p4%elem%face%lshare)
+    allocate(msh%msh_conn%face%loff, source = p4%elem%face%loff)
 
     if (msh%gdim == 3) then
-       msh%connect%edge%lnum = p4%elem%edge%lnum
-       msh%connect%edge%lown = p4%elem%edge%lown
-       msh%connect%edge%goff = p4%elem%edge%goff
-       msh%connect%edge%gnum = p4%elem%edge%gnum
-       allocate(msh%connect%edge%lmap, source = p4%elem%edge%lmap)
-       allocate(msh%connect%edge%lgidx, source = p4%elem%edge%lgidx)
-       allocate(msh%connect%edge%lrank, source = p4%elem%edge%lrank)
-       allocate(msh%connect%edge%lshare, source = p4%elem%edge%lshare)
-       allocate(msh%connect%edge%loff, source = p4%elem%edge%loff)
+       msh%msh_conn%edge%lnum = p4%elem%edge%lnum
+       msh%msh_conn%edge%lown = p4%elem%edge%lown
+       msh%msh_conn%edge%goff = p4%elem%edge%goff
+       msh%msh_conn%edge%gnum = p4%elem%edge%gnum
+       allocate(msh%msh_conn%edge%lmap, source = p4%elem%edge%lmap)
+       allocate(msh%msh_conn%edge%lgidx, source = p4%elem%edge%lgidx)
+       allocate(msh%msh_conn%edge%lrank, source = p4%elem%edge%lrank)
+       allocate(msh%msh_conn%edge%lshare, source = p4%elem%edge%lshare)
+       allocate(msh%msh_conn%edge%loff, source = p4%elem%edge%loff)
     end if
 
     return
@@ -2215,7 +2209,7 @@ contains
   end subroutine p4_manager_free
 
   subroutine p4_msh_get(this, msh)
-    class(p4_mesh_import_t), intent(inout) :: p4
+    class(p4_mesh_cnstr_t), intent(inout) :: p4
     type(mesh_t), intent(inout) :: msh
 
     call neko_error('NEKO needs to be built with P4EST support')
@@ -2224,7 +2218,7 @@ contains
 
   subroutine p4_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
        &ifmod, msh_rcn)
-    class(p4_mesh_import_t), intent(inout) :: this
+    class(p4_mesh_cnstr_t), intent(inout) :: this
     integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
     type(mesh_manager_transfer_t), intent(in) :: msh_trs
     integer(i4), intent(in) :: level_max

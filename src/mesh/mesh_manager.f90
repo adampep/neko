@@ -34,7 +34,7 @@ module mesh_manager
   use num_types
   use logger
   use utils
-  use mesh_import
+  use mesh_cnstr
   use p4est
   implicit none
   private
@@ -45,7 +45,7 @@ module mesh_manager
   type mesh_manager_t
      logical, private :: initialised_ = .false. ! mesh manager
                                                 ! initialisation flag
-     class(mesh_import_t), allocatable :: msh_imp ! mesh manager's imported mesh
+     class(mesh_cnstr_t), allocatable :: msh_imp ! mesh manager's imported mesh
    contains
      procedure, pass(this) :: initialised => manager_init
      procedure, pass(this) :: set_init => manager_set_init
@@ -71,7 +71,7 @@ contains
 
     if (suffix == "p4est") then
        call neko_log%message('Initialising mesh manager p4est')
-       allocate(p4_mesh_import_t ::this%msh_imp )
+       allocate(p4_mesh_cnstr_t ::this%msh_imp )
 
        if (present(log_threshold)) then
           call p4_manager_init(mesh_file, log_threshold)
@@ -113,7 +113,7 @@ contains
        call this%msh_imp%free()
        ! finalise mesh manager
        select type (imp => this%msh_imp)
-       type is(p4_mesh_import_t)
+       type is(p4_mesh_cnstr_t)
           call neko_log%message('Finalising mesh manager p4est')
           if (present(log_threshold)) then
              call p4_manager_free(log_threshold)

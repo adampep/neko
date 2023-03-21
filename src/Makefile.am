@@ -335,9 +335,11 @@ if ENABLE_P4EST
 #
 # Place for p4est and sc related stuff
 neko_fortran_SOURCES += mesh/mesh_redistribute.f90\
-	mesh/mesh_import.f90\
+	mesh/mesh_construct.f90\
 	mesh/mesh_manager.f90\
-	mesh/connectivity.f90\
+	mesh/mesh_conn.f90\
+	mesh/mesh_geo.f90\
+	mesh/field_construct.f90\
 	mesh/p4est.F90\
 	mesh/amr.f90
 libneko_a_SOURCES += mesh/p4est_wrap.c

@@ -7,9 +7,10 @@ module amr
   use parameters
   use mxm_wrapper
   use speclib
-  use mesh_import
+  use mesh_cnstr
   use mesh_manager
   use mesh_redistribute
+  use field_cnstr
   use p4est
   use mesh
   use fluid_method

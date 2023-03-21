@@ -30,53 +30,53 @@
 ! ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ! POSSIBILITY OF SUCH DAMAGE.
 !
-module mesh_import
+module mesh_cnstr
   use num_types
   use mesh_redistribute
   use mesh
   implicit none
   private
 
-  !> Base type for mesh data import from mesh managers
-  type, public, abstract :: mesh_import_t
+  !> Base type for mesh construction in the refinement/coarsening process
+  type, public, abstract :: mesh_cnstr_t
    contains
-     procedure(mesh_im_extract), pass(this), deferred :: msh_get
-     procedure(mesh_im_refine), pass(this), deferred :: refine
-     procedure(mesh_im_free), pass(this), deferred :: free
-  end type mesh_import_t
+     procedure(mesh_cnstr_extract), pass(this), deferred :: msh_get
+     procedure(mesh_cnstr_refine), pass(this), deferred :: refine
+     procedure(mesh_cnstr_free), pass(this), deferred :: free
+  end type mesh_cnstr_t
 
   abstract interface
-     subroutine mesh_im_extract(this, msh)
-       import :: mesh_import_t
+     subroutine mesh_cnstr_extract(this, msh)
+       import :: mesh_cnstr_t
        import :: mesh_t
-       class(mesh_import_t), intent(inout) :: this
+       class(mesh_cnstr_t), intent(inout) :: this
        type(mesh_t), intent(inout) :: msh
-     end subroutine mesh_im_extract
+     end subroutine mesh_cnstr_extract
   end interface
 
   abstract interface
-     subroutine mesh_im_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
+     subroutine mesh_cnstr_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
        &ifmod, msh_rcn)
-       import :: mesh_import_t
+       import :: mesh_cnstr_t
        import :: mesh_manager_transfer_t
        import :: mesh_reconstruct_transfer_t
        import :: i4
-       class(mesh_import_t), intent(inout) :: this
+       class(mesh_cnstr_t), intent(inout) :: this
        integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
        type(mesh_manager_transfer_t), intent(in) :: msh_trs
        integer(i4), intent(in) :: level_max
        logical, intent(out) :: ifmod
        type(mesh_reconstruct_transfer_t), intent(out) :: msh_rcn
-     end subroutine mesh_im_refine
+     end subroutine mesh_cnstr_refine
   end interface
 
   abstract interface
-     subroutine mesh_im_free(this)
-       import :: mesh_import_t
-       class(mesh_import_t), intent(inout) :: this
-     end subroutine mesh_im_free
+     subroutine mesh_cnstr_free(this)
+       import :: mesh_cnstr_t
+       class(mesh_cnstr_t), intent(inout) :: this
+     end subroutine mesh_cnstr_free
   end interface
 
 contains
 
-end module mesh_import
+end module mesh_cnstr
