@@ -254,7 +254,7 @@ contains
 
     msh => this%msh
     Xh => this%Xh
-    if (msh%connect%nonconf()) then
+    if (msh%msh_conn%nonconf()) then
        if (msh%gdim .eq. 2) then
           call neko_error('2D dof point not supported yet.')
        else
@@ -264,9 +264,9 @@ contains
                 iy = mod(jl -1 ,4)/2 *(Xh%ly - 1) + 1
                 iz = (jl - 1)/4 * (Xh%lz - 1) + 1
                 this%dof(ix, iy, iz, il) = &
-                     & msh%connect%vert%lgidx(msh%connect%vert%lmap(jl,il))
+                     & msh%msh_conn%vert%lgidx(msh%msh_conn%vert%lmap(jl,il))
                 this%shared_dof(ix, iy, iz, il) = &
-                     & msh%ddata%shared_point%element(msh%connect%vert%lmap(jl,il))
+                     & msh%ddata%shared_point%element(msh%msh_conn%vert%lmap(jl,il))
              end do
           end do
        end if
@@ -305,7 +305,7 @@ contains
     num_dofs_edges(3) =  int(Xh%lz - 2, i8)
     edge_offset = int(msh%glb_mpts, i8) + int(1, 4)
 
-    if (msh%connect%nonconf()) then
+    if (msh%msh_conn%nonconf()) then
        if (msh%gdim .eq. 2) then
           call neko_error('2D dof edge not supported yet.')
        else
@@ -314,11 +314,11 @@ contains
              do j = 1, 4
                 iy = mod(j - 1 ,2)
                 iz = (j - 1)/2
-                shared_dof = msh%ddata%shared_edge%element(msh%connect%edge%lmap(j,i))
-                global_id = msh%connect%edge%lgidx(msh%connect%edge%lmap(j,i))
+                shared_dof = msh%ddata%shared_edge%element(msh%msh_conn%edge%lmap(j,i))
+                global_id = msh%msh_conn%edge%lgidx(msh%msh_conn%edge%lmap(j,i))
                 edge_id = edge_offset + int((global_id - 1), i8) * num_dofs_edges(1)
                 ! check aligment
-                select case(msh%connect%ealg(j,i))
+                select case(msh%msh_conn%ealg(j,i))
                 case (0)
                    do k = 2, Xh%lx - 1, 1
                       this%dof(k, iy*(Xh%ly - 1) + 1, iz*(Xh%lz - 1) + 1, i) = edge_id
@@ -340,11 +340,11 @@ contains
              do j = 5, 8
                 ix = mod(j - 1 ,2)
                 iz = (j - 5)/2
-                shared_dof = msh%ddata%shared_edge%element(msh%connect%edge%lmap(j,i))
-                global_id = msh%connect%edge%lgidx(msh%connect%edge%lmap(j,i))
+                shared_dof = msh%ddata%shared_edge%element(msh%msh_conn%edge%lmap(j,i))
+                global_id = msh%msh_conn%edge%lgidx(msh%msh_conn%edge%lmap(j,i))
                 edge_id = edge_offset + int((global_id - 1), i8) * num_dofs_edges(1)
                 ! check aligment
-                select case(msh%connect%ealg(j,i))
+                select case(msh%msh_conn%ealg(j,i))
                 case (0)
                    do k = 2, Xh%ly - 1, 1
                       this%dof(ix*(Xh%lx - 1) + 1, k, iz*(Xh%lz - 1) + 1, i) = edge_id
@@ -366,11 +366,11 @@ contains
              do j = 9, 12
                 ix = mod(j - 1 ,2)
                 iy = (j - 9)/2
-                shared_dof = msh%ddata%shared_edge%element(msh%connect%edge%lmap(j,i))
-                global_id = msh%connect%edge%lgidx(msh%connect%edge%lmap(j,i))
+                shared_dof = msh%ddata%shared_edge%element(msh%msh_conn%edge%lmap(j,i))
+                global_id = msh%msh_conn%edge%lgidx(msh%msh_conn%edge%lmap(j,i))
                 edge_id = edge_offset + int((global_id - 1), i8) * num_dofs_edges(1)
                 ! check aligment
-                select case(msh%connect%ealg(j,i))
+                select case(msh%msh_conn%ealg(j,i))
                 case (0)
                    do k = 2, Xh%lz - 1, 1
                       this%dof(ix*(Xh%lx - 1) + 1, iy*(Xh%ly - 1) + 1, k, i) = edge_id
@@ -633,7 +633,7 @@ contains
     num_dofs_faces(2) =  int((Xh%lx - 2) * (Xh%lz - 2), i8)
     num_dofs_faces(3) =  int((Xh%lx - 2) * (Xh%ly - 2), i8)
 
-    if (msh%connect%nonconf()) then
+    if (msh%msh_conn%nonconf()) then
        if (msh%gdim .eq. 2) then
           call neko_error('2D dof face not supported yet.')
        else
@@ -641,11 +641,11 @@ contains
              ! Number facets in r-direction (s, t)-plane
              do j = 1, 2
                 ix = mod(j - 1 ,2)
-                shared_dof = msh%ddata%shared_facet%element(msh%connect%face%lmap(j,i))
-                global_id = msh%connect%face%lgidx(msh%connect%face%lmap(j,i))
+                shared_dof = msh%ddata%shared_facet%element(msh%msh_conn%face%lmap(j,i))
+                global_id = msh%msh_conn%face%lgidx(msh%msh_conn%face%lmap(j,i))
                 facet_id = facet_offset + int((global_id - 1), i8) * num_dofs_faces(1)
                 ! THIS IS JUST FOR NOW
-                select case(msh%connect%falg(j,i))
+                select case(msh%msh_conn%falg(j,i))
                 case(0)
                    do l = 2, Xh%lz - 1
                       do k = 2, Xh%ly - 1
@@ -662,11 +662,11 @@ contains
              ! Number facets in s-direction (r, t)-plane
              do j = 3, 4
                 iy = mod(j - 1 ,2)
-                shared_dof = msh%ddata%shared_facet%element(msh%connect%face%lmap(j,i))
-                global_id = msh%connect%face%lgidx(msh%connect%face%lmap(j,i))
+                shared_dof = msh%ddata%shared_facet%element(msh%msh_conn%face%lmap(j,i))
+                global_id = msh%msh_conn%face%lgidx(msh%msh_conn%face%lmap(j,i))
                 facet_id = facet_offset + int((global_id - 1), i8) * num_dofs_faces(1)
                 ! THIS IS JUST FOR NOW
-                select case(msh%connect%falg(j,i))
+                select case(msh%msh_conn%falg(j,i))
                 case(0)
                    do l = 2, Xh%lz -1
                       do k = 2, Xh%lx - 1
@@ -683,11 +683,11 @@ contains
              ! Number facets in t-direction (r, s)-plane
              do j = 5, 6
                 iz = mod(j - 1 ,2)
-                shared_dof = msh%ddata%shared_facet%element(msh%connect%face%lmap(j,i))
-                global_id = msh%connect%face%lgidx(msh%connect%face%lmap(j,i))
+                shared_dof = msh%ddata%shared_facet%element(msh%msh_conn%face%lmap(j,i))
+                global_id = msh%msh_conn%face%lgidx(msh%msh_conn%face%lmap(j,i))
                 facet_id = facet_offset + int((global_id - 1), i8) * num_dofs_faces(1)
                 ! THIS IS JUST FOR NOW
-                select case(msh%connect%falg(j,i))
+                select case(msh%msh_conn%falg(j,i))
                 case(0)
                    do l = 2, Xh%ly -1
                       do k = 2, Xh%lx - 1
