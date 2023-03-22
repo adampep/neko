@@ -39,9 +39,11 @@ module mesh_redistribute
 
   !> Type for data transfer between mesh manager and neko
   type mesh_manager_transfer_t
+     integer(i4) :: mm_nel ! local element number on mesh manager side
+     integer(i4) :: nk_nel ! local element number on neko side
      ! mesh manager <=> neko element distribution mapping
      ! (global element number, process id)
-     integer(i4), allocatable, dimension(:, :) :: elmap_p2n, elmap_n2p
+     integer(i4), allocatable, dimension(:, :) :: elmap_mm2nk, elmap_nk2mm
    contains
      procedure, public, pass(this) :: free => manager_transfer_free
   end type mesh_manager_transfer_t
@@ -80,8 +82,12 @@ contains
     class(mesh_manager_transfer_t), intent(inout) :: this
 
     ! Deallocate arrays
-    if (allocated(this%elmap_p2n)) deallocate(this%elmap_p2n)
-    if (allocated(this%elmap_n2p)) deallocate(this%elmap_n2p)
+    if (allocated(this%elmap_mm2nk)) deallocate(this%elmap_mm2nk)
+    if (allocated(this%elmap_nk2mm)) deallocate(this%elmap_nk2mm)
+
+    ! Reset registers
+    this%mm_nel = 0
+    this%nk_nel = 0
 
     return
   end subroutine manager_transfer_free
@@ -89,6 +95,11 @@ contains
   subroutine reconstruct_transfer_free(this)
     ! argument list
     class(mesh_reconstruct_transfer_t), intent(inout) :: this
+
+    ! Deallocate arrays
+    if (allocated(this%elgl_map)) deallocate(this%elgl_map)
+    if (allocated(this%elgl_rfn)) deallocate(this%elgl_rfn)
+    if (allocated(this%elgl_crs)) deallocate(this%elgl_crs)
 
     ! Reset registers
     this%map_nr = 0
@@ -98,11 +109,6 @@ contains
     this%crs_nr_s = 0
     this%crs_nr_b = 0
     this%nelvo = 0
-
-    ! Deallocate arrays
-    if (allocated(this%elgl_map)) deallocate(this%elgl_map)
-    if (allocated(this%elgl_rfn)) deallocate(this%elgl_rfn)
-    if (allocated(this%elgl_crs)) deallocate(this%elgl_crs)
 
     return
   end subroutine reconstruct_transfer_free

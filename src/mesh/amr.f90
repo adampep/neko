@@ -1,3 +1,35 @@
+! Copyright (c) 2019-2021, The Neko Authors
+! All rights reserved.
+!
+! Redistribution and use in source and binary forms, with or without
+! modification, are permitted provided that the following conditions
+! are met:
+!
+!   * Redistributions of source code must retain the above copyright
+!     notice, this list of conditions and the following disclaimer.
+!
+!   * Redistributions in binary form must reproduce the above
+!     copyright notice, this list of conditions and the following
+!     disclaimer in the documentation and/or other materials provided
+!     with the distribution.
+!
+!   * Neither the name of the authors nor the names of its
+!     contributors may be used to endorse or promote products derived
+!     from this software without specific prior written permission.
+!
+! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+! "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+! LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+! FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+! COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+! INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+! BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+! LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+! CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+! LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+! ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+! POSSIBILITY OF SUCH DAMAGE.
+!
 !> Main interface for h-type amr in neko
 module amr
   use mpi_f08
@@ -7,10 +39,10 @@ module amr
   use parameters
   use mxm_wrapper
   use speclib
-  use mesh_cnstr
+  use mesh_cnstr_amr
   use mesh_manager
   use mesh_redistribute
-  use field_cnstr
+  use field_cnstr_amr
   use p4est
   use mesh
   use fluid_method
@@ -600,8 +632,13 @@ contains
     do il = 1, msh%nelv
        el_gidx(il) = msh%offset_el + il
     end do
-    call amr_rcn%msh_mngr%msh_imp%refine(ref_mark, el_gidx, amr_rcn%msh_trs,&
-         & level_max, ifmod,  amr_rcn%msh_rcn)
+    select type(msh_imp => amr_rcn%msh_mngr%msh_imp)
+    class is (mesh_cnstr_amr_t)
+       call msh_imp%refine(ref_mark, el_gidx, amr_rcn%msh_trs,&
+            & level_max, ifmod,  amr_rcn%msh_rcn)
+    class default
+       call neko_error('Invalid refinement class type')
+    end select
     deallocate(el_gidx)
 
     if (ifmod)  then

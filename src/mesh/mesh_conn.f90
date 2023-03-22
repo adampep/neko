@@ -79,6 +79,13 @@ contains
     ! argument list
     class(obj_conn_t), intent(inout) :: this
 
+    ! Deallocate arrays
+    if (allocated(this%lmap)) deallocate(this%lmap)
+    if (allocated(this%lgidx)) deallocate(this%lgidx)
+    if (allocated(this%lrank)) deallocate(this%lrank)
+    if (allocated(this%lshare)) deallocate(this%lshare)
+    if (allocated(this%loff)) deallocate(this%loff)
+
     ! Reset registers
     this%lnum = 0
     this%lown = 0
@@ -86,13 +93,6 @@ contains
     this%gnum = 0
     this%nrank = 0
     this%nshare = 0
-
-    ! Deallocate arrays
-    if (allocated(this%lmap)) deallocate(this%lmap)
-    if (allocated(this%lgidx)) deallocate(this%lgidx)
-    if (allocated(this%lrank)) deallocate(this%lrank)
-    if (allocated(this%lshare)) deallocate(this%lshare)
-    if (allocated(this%loff)) deallocate(this%loff)
 
     return
   end subroutine obj_conn_free
@@ -116,9 +116,6 @@ contains
     ! argument list
     class(mesh_conn_t), intent(inout) :: this
 
-    ! Reset registers
-    this%nel = 0
-
     ! Deallocate arrays
     if (allocated(this%falg)) deallocate(this%falg)
     if (allocated(this%ealg)) deallocate(this%ealg)
@@ -127,6 +124,9 @@ contains
     call this%vert%free()
     call this%face%free()
     call this%edge%free()
+
+    ! Reset registers
+    this%nel = 0
 
     ! Reset mesh nonconformity flag
     call this%set_nonconf(.false.)

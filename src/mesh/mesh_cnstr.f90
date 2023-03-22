@@ -32,16 +32,16 @@
 !
 module mesh_cnstr
   use num_types
-  use mesh_redistribute
   use mesh
   implicit none
   private
 
-  !> Base type for mesh construction in the refinement/coarsening process
-  type, public, abstract :: mesh_cnstr_t
+  public :: mesh_cnstr_t
+
+  !> Base type for mesh construction
+  type, abstract :: mesh_cnstr_t
    contains
      procedure(mesh_cnstr_extract), pass(this), deferred :: msh_get
-     procedure(mesh_cnstr_refine), pass(this), deferred :: refine
      procedure(mesh_cnstr_free), pass(this), deferred :: free
   end type mesh_cnstr_t
 
@@ -52,22 +52,6 @@ module mesh_cnstr
        class(mesh_cnstr_t), intent(inout) :: this
        type(mesh_t), intent(inout) :: msh
      end subroutine mesh_cnstr_extract
-  end interface
-
-  abstract interface
-     subroutine mesh_cnstr_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
-       &ifmod, msh_rcn)
-       import :: mesh_cnstr_t
-       import :: mesh_manager_transfer_t
-       import :: mesh_reconstruct_transfer_t
-       import :: i4
-       class(mesh_cnstr_t), intent(inout) :: this
-       integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
-       type(mesh_manager_transfer_t), intent(in) :: msh_trs
-       integer(i4), intent(in) :: level_max
-       logical, intent(out) :: ifmod
-       type(mesh_reconstruct_transfer_t), intent(out) :: msh_rcn
-     end subroutine mesh_cnstr_refine
   end interface
 
   abstract interface

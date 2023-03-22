@@ -30,31 +30,31 @@
 ! ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ! POSSIBILITY OF SUCH DAMAGE.
 !
-module field_cnstr
+module field_cnstr_amr
   use num_types
   use mesh_redistribute
   implicit none
   private
 
-  public :: field_cnstr_t
+  public :: field_cnstr_amr_t
 
   !> Base type for filed reconstruction during refinement/coarsening
-  type :: field_cnstr_t
+  type :: field_cnstr_amr_t
      integer(i4) :: nel ! local number of elements
    contains
-     procedure, pass(this) :: free => field_cnstr_free
-  end type field_cnstr_t
+     procedure, pass(this) :: free => field_cnstr_amr_free
+  end type field_cnstr_amr_t
 
 contains
 
-  subroutine field_cnstr_free(this)
+  subroutine field_cnstr_amr_free(this)
     ! argument list
-    class(field_cnstr_t), intent(inout) :: this
+    class(field_cnstr_amr_t), intent(inout) :: this
 
     ! Reset registers
     this%nel = 0
 
     return
-  end subroutine field_cnstr_free
+  end subroutine field_cnstr_amr_free
 
-end module field_cnstr
+end module field_cnstr_amr

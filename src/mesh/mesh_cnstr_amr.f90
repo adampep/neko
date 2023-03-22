@@ -30,55 +30,37 @@
 ! ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ! POSSIBILITY OF SUCH DAMAGE.
 !
-module mesh_geom
+module mesh_cnstr_amr
   use num_types
-  use element
-  use point
-  use quad
-  use hex
+  use mesh_redistribute
+  use mesh_cnstr
   implicit none
   private
 
-  public :: mesh_geom_t
+  public :: mesh_cnstr_amr_t
 
-  type, private :: mesh_element_t
-     class(element_t), allocatable :: el
-  end type mesh_element_t
-
-  !> Base type for mesh geometrical information
-  type :: mesh_geom_t
-     integer(i4) :: nel ! local number of elements
-     integer(i4) :: mpts ! local number of unique points in the mesh
-     type(point_t), allocatable :: points(:) ! list of local unique points
-     type(mesh_element_t), allocatable :: elements(:) ! list of local elements
-     ! place for deformation info
+  !> Base type for mesh construction in the refinement/coarsening process
+  type, extends(mesh_cnstr_t), abstract :: mesh_cnstr_amr_t
    contains
-     procedure, pass(this) :: free => mesh_geom_free
-  end type mesh_geom_t
+     procedure(mesh_cnstr_refine), pass(this), deferred :: refine
+  end type mesh_cnstr_amr_t
+
+  abstract interface
+     subroutine mesh_cnstr_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
+       &ifmod, msh_rcn)
+       import :: mesh_cnstr_amr_t
+       import :: mesh_manager_transfer_t
+       import :: mesh_reconstruct_transfer_t
+       import :: i4
+       class(mesh_cnstr_amr_t), intent(inout) :: this
+       integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
+       type(mesh_manager_transfer_t), intent(in) :: msh_trs
+       integer(i4), intent(in) :: level_max
+       logical, intent(out) :: ifmod
+       type(mesh_reconstruct_transfer_t), intent(out) :: msh_rcn
+     end subroutine mesh_cnstr_refine
+  end interface
 
 contains
 
-  !> Free memory
-  subroutine mesh_geom_free(this)
-    ! argument list
-    class(mesh_geom_t), intent(inout) :: this
-
-    integer(i4) :: il
-
-    ! Deallocate arrays
-    if (allocated(this%points)) deallocate(this%points)
-    if (allocated(this%elements)) then
-       do il = 1, this%nel
-          call this%elements(il)%el%free()
-       end do
-       deallocate(this%elements)
-    end if
-
-    ! Reset registers
-    this%nel = 0
-    this%mpts = 0
-
-    return
-  end subroutine mesh_geom_free
-
-end module mesh_geom
+end module mesh_cnstr_amr

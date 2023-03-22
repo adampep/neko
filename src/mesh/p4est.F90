@@ -1,3 +1,35 @@
+! Copyright (c) 2019-2021, The Neko Authors
+! All rights reserved.
+!
+! Redistribution and use in source and binary forms, with or without
+! modification, are permitted provided that the following conditions
+! are met:
+!
+!   * Redistributions of source code must retain the above copyright
+!     notice, this list of conditions and the following disclaimer.
+!
+!   * Redistributions in binary form must reproduce the above
+!     copyright notice, this list of conditions and the following
+!     disclaimer in the documentation and/or other materials provided
+!     with the distribution.
+!
+!   * Neither the name of the authors nor the names of its
+!     contributors may be used to endorse or promote products derived
+!     from this software without specific prior written permission.
+!
+! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+! "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+! LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+! FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+! COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+! INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+! BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+! LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+! CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+! LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+! ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+! POSSIBILITY OF SUCH DAMAGE.
+!
 !> Main interface for data exchange and manipulation between p4est and neko
 module p4est
   use mpi_f08
@@ -8,7 +40,7 @@ module p4est
   use math
   use tuple
   use htable
-  use mesh_cnstr
+  use mesh_cnstr_amr
   use mesh_redistribute
   use distdata
   use point
@@ -91,7 +123,8 @@ module p4est
      integer(i4) :: lnum, lown ! number of local and owned objects
      integer(i8) :: goff ! global object offset
      integer(i8) :: gnum ! global number of objects
-     integer(i4), allocatable, dimension(:,:) :: lmap ! element vertices/faces/edges
+     integer(i4), allocatable, dimension(:,:) :: lmap ! element
+                                                      ! vertices/faces/edges
                                                       ! to object mapping
      integer(i4) :: nrank, nshare ! number of MPI ranks sharing objects and
                                   ! number of shared objects
@@ -175,7 +208,8 @@ module p4est
      integer(i4), allocatable, dimension(:,:) :: ealg ! edge alignment
 
      ! Topology information: hanging elements, faces, edges and vertices
-     ! The element is marked as hanging if it contains at least one hanging object.
+     ! The element is marked as hanging if it contains at least one hanging
+     ! object.
      ! Hanging face
      ! 2D
      !   = -1 if the face is not hanging,
@@ -285,7 +319,7 @@ module p4est
   end type p4_element_t
 
   ! Type combining all the mesh information that can be extracted from p4est
-  type, extends(mesh_cnstr_t) :: p4_mesh_cnstr_t
+  type, extends(mesh_cnstr_amr_t) :: p4_mesh_cnstr_t
      ! general information
      integer :: dim, maxl, maxg ! dimension, local and global max refinement
                                 ! level
@@ -572,16 +606,16 @@ contains
     ! argument list
     class(p4_node_ind_t), intent(inout) :: this
 
+    ! Deallocate arrays
+    if (allocated(this%gidx)) deallocate(this%gidx)
+    if (allocated(this%ndown)) deallocate(this%ndown)
+    if (allocated(this%coord)) deallocate(this%coord)
+
     ! Reset registers
     this%lown = 0
     this%lshr = 0
     this%loff = 0
     this%lnum = 0
-
-    ! Deallocate arrays
-    if (allocated(this%gidx)) deallocate(this%gidx)
-    if (allocated(this%ndown)) deallocate(this%ndown)
-    if (allocated(this%coord)) deallocate(this%coord)
 
     return
   end subroutine p4_node_ind_free
@@ -590,12 +624,12 @@ contains
     ! argument list
     class(p4_node_per_t), intent(inout) :: this
 
-    ! Reset registers
-    this%lnum = 0
-
     ! Deallocate arrays
     if (allocated(this%lmap)) deallocate(this%lmap)
     if (allocated(this%coord)) deallocate(this%coord)
+
+    ! Reset registers
+    this%lnum = 0
 
     return
   end subroutine p4_node_per_free
@@ -604,12 +638,12 @@ contains
     ! argument list
     class(p4_node_hng_t), intent(inout) :: this
 
-    ! Reset registers
-    this%lnum = 0
-
     ! Deallocate arrays
     if (allocated(this%lmap)) deallocate(this%lmap)
     if (allocated(this%coord)) deallocate(this%coord)
+
+    ! Reset registers
+    this%lnum = 0
 
     return
   end subroutine p4_node_hng_free
@@ -617,6 +651,13 @@ contains
   subroutine p4_obj_conn_free(this)
     ! argument list
     class(p4_obj_conn_t), intent(inout) :: this
+
+    ! Deallocate arrays
+    if (allocated(this%lmap)) deallocate(this%lmap)
+    if (allocated(this%lgidx)) deallocate(this%lgidx)
+    if (allocated(this%lrank)) deallocate(this%lrank)
+    if (allocated(this%lshare)) deallocate(this%lshare)
+    if (allocated(this%loff)) deallocate(this%loff)
 
     ! Reset registers
     this%lnum = 0
@@ -626,25 +667,12 @@ contains
     this%nrank = 0
     this%nshare = 0
 
-    ! Deallocate arrays
-    if (allocated(this%lmap)) deallocate(this%lmap)
-    if (allocated(this%lgidx)) deallocate(this%lgidx)
-    if (allocated(this%lrank)) deallocate(this%lrank)
-    if (allocated(this%lshare)) deallocate(this%lshare)
-    if (allocated(this%loff)) deallocate(this%loff)
-
     return
   end subroutine p4_obj_conn_free
 
   subroutine p4_element_free(this)
     ! argument list
     class(p4_element_t), intent(inout) :: this
-
-    ! Reset registers
-    this%nelt = 0
-    this%nelv = 0
-    this%nelgt = 0
-    this%nelgto = 0
 
     ! Deallocate arrays
     if (allocated(this%gidx)) deallocate(this%gidx)
@@ -665,17 +693,18 @@ contains
     call this%face%free()
     call this%edge%free()
 
+    ! Reset registers
+    this%nelt = 0
+    this%nelv = 0
+    this%nelgt = 0
+    this%nelgto = 0
+
     return
   end subroutine p4_element_free
 
   subroutine p4_mesh_cnstr_free(this)
     ! argument list
     class(p4_mesh_cnstr_t), intent(inout) :: this
-
-    ! Reset registers
-    this%dim = 0
-    this%maxl = 0
-    this%maxg = 0
 
     ! Free types
     call this%indn%free()
@@ -684,10 +713,16 @@ contains
     call this%edhn%free()
     call this%elem%free()
 
+    ! Reset registers
+    this%dim = 0
+    this%maxl = 0
+    this%maxg = 0
+
     return
   end subroutine p4_mesh_cnstr_free
 
 #ifdef HAVE_P4EST
+  ! Initialise p4est as mesh manager
   subroutine p4_manager_init(mesh_file, log_threshold)
     character(len=*), intent(in) :: mesh_file
     integer, intent(in), optional :: log_threshold
@@ -744,6 +779,7 @@ contains
     return
   end subroutine p4_manager_init
 
+  ! Finalise p4est as mesh manager
   subroutine p4_manager_free(log_priority)
     integer, intent(in), optional :: log_priority
 
@@ -763,6 +799,7 @@ contains
     return
   end subroutine p4_manager_free
 
+  ! Construct mesh information using p4est imported data
   subroutine p4_msh_get(this, msh)
     ! argument list
     class(p4_mesh_cnstr_t), intent(inout) :: this
@@ -772,7 +809,7 @@ contains
 
     call neko_log%section("Mesh")
     ! import data from p4est
-    call p4_mesh_cnstr_data(this)
+    call p4_mesh_import_data(this)
 
     call neko_log%message('Build the mesh')
 
@@ -969,7 +1006,8 @@ contains
     return
   end subroutine p4_refine
 
-  subroutine p4_mesh_cnstr_data(p4)
+  ! Import data from p4est and store in a local type
+  subroutine p4_mesh_import_data(p4)
     ! argument list
     type(p4_mesh_cnstr_t), intent(inout) :: p4
     ! local variables
@@ -977,10 +1015,13 @@ contains
     integer :: ierr, nvert, nface, nedge
     integer(i8) :: itmp8
     integer(i4), allocatable, target, dimension(:) :: itmp4v1, itmp4v2, itmp4v3
-    integer(i4), allocatable, target, dimension(:,:) :: itmp4v21, itmp4v22, itmp4v23
+    integer(i4), allocatable, target, dimension(:,:) :: itmp4v21, itmp4v22,&
+         & itmp4v23
     integer(i8), allocatable, target, dimension(:) :: itmp8v1
     real(dp), allocatable, target, dimension(:,:) :: rtmpv1
     real(dp), allocatable, target, dimension(:,:,:) :: rtmpv2
+    character(len=*), parameter ::&
+         & frmt="('gdim = ', i1, ', nelements =', i9,', max ref. lev. = ',i2)"
 
        call neko_log%message('Import mesh data from p4est')
        ! clean memory
@@ -1002,8 +1043,7 @@ contains
          call MPI_Allreduce(p4%maxl, p4%maxg, 1, &
               MPI_INTEGER, MPI_MAX, NEKO_COMM, ierr)
 
-         write(log_buf,1) dim, p4%elem%nelgt, p4%maxg
-1        format('gdim = ', i1, ', nelements =', i9,', max ref. lev. = ',i2)
+         write(log_buf,frmt) dim, p4%elem%nelgt, p4%maxg
          call neko_log%message(log_buf)
 
          if (nelv > 0) then
@@ -1030,7 +1070,7 @@ contains
             if (p4%maxl > 0) then
                if (dim == 2) then
                   if (p4%fchn%lnum > 0) then
-                     ! each face hanging node is defined by 2 independent nodes
+                     ! each face hanging node is defined by 4 independent nodes
                      allocate(itmp4v21(2, p4%fchn%lnum), &
                           & rtmpv1(dim, p4%fchn%lnum))
                      call wp4est_nds_get_hfc(c_loc(itmp4v21), c_loc(rtmpv1))
@@ -1093,7 +1133,8 @@ contains
                  & c_loc(itmp4v22))
             call MOVE_ALLOC(itmp4v1, p4%elem%hngel)
             call MOVE_ALLOC(itmp4v21, p4%elem%hngfc)
-            call MOVE_ALLOC(itmp4v22, p4%elem%hnged) !!!!! THIS SHOULD BE CHECKED FOR 2D SIMULATION !!!
+            call MOVE_ALLOC(itmp4v22, p4%elem%hnged) &
+                 &!!!!! THIS SHOULD BE CHECKED FOR 2D SIMULATION !!!
 
             ! get global indexes of element vertices
             allocate(itmp4v21(nvert, nelv))
@@ -1114,7 +1155,7 @@ contains
             call MOVE_ALLOC(itmp4v2, p4%elem%vert%loff)
             call MOVE_ALLOC(itmp4v3, p4%elem%vert%lshare)
 
-            ! get globlal number of vertices
+            ! get global number of vertices
             itmp8 = p4%elem%vert%lown
             call MPI_Allreduce(itmp8, p4%elem%vert%gnum, 1, &
                  MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
@@ -1140,14 +1181,14 @@ contains
             call MOVE_ALLOC(itmp4v2, p4%elem%face%loff)
             call MOVE_ALLOC(itmp4v3, p4%elem%face%lshare)
 
-            ! get globlal number of faces
+            ! get global number of faces
             itmp8 = p4%elem%face%lown
             call MPI_Allreduce(itmp8, p4%elem%face%gnum, 1, &
                  MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
             call wp4est_lnodes_del()
 
-            ! get edge infromation; this is not straighforwars, as p4est does not provide
-            ! a simple way to extract this information
+            ! get edge information; this is not straightforward, as p4est
+            ! does not provide a simple way to extract this information
             if (dim == 3) call p4_edge_get(p4)
 
             ! get family information
@@ -1162,7 +1203,7 @@ contains
        call wp4est_ghost_del()
 
     return
-  end subroutine p4_mesh_cnstr_data
+  end subroutine p4_mesh_import_data
 
   ! this subroutine should be adjusted for 2D; not done yet
   subroutine p4_node_periodic_get(p4, vcoord, dim, nvert, nelv)
