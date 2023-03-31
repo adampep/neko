@@ -36,12 +36,25 @@ module mesh_cnstr
   implicit none
   private
 
-  public :: mesh_cnstr_t
+  public :: mesh_manager_transfer_t, mesh_cnstr_t
+
+  !> Type for data transfer between mesh manager and neko
+  type mesh_manager_transfer_t
+     integer(i4) :: mm_nel ! local element number on mesh manager side
+     integer(i4) :: nk_nel ! local element number on neko side
+     ! mesh manager <=> neko element distribution mapping
+     ! (global element number, process id)
+     integer(i4), allocatable, dimension(:, :) :: elmap_mm2nk, elmap_nk2mm
+   contains
+     procedure, public, pass(this) :: free => manager_transfer_free
+  end type mesh_manager_transfer_t
 
   !> Base type for mesh construction
   type, abstract :: mesh_cnstr_t
+     ! element mapping between mesh manager and neko
+     type(mesh_manager_transfer_t) :: msh_trs
    contains
-     procedure(mesh_cnstr_extract), pass(this), deferred :: msh_get
+     procedure(mesh_cnstr_extract), pass(this), deferred :: mesh_get
      procedure(mesh_cnstr_free), pass(this), deferred :: free
   end type mesh_cnstr_t
 
@@ -62,5 +75,20 @@ module mesh_cnstr
   end interface
 
 contains
+
+  subroutine manager_transfer_free(this)
+    ! argument list
+    class(mesh_manager_transfer_t), intent(inout) :: this
+
+    ! Deallocate arrays
+    if (allocated(this%elmap_mm2nk)) deallocate(this%elmap_mm2nk)
+    if (allocated(this%elmap_nk2mm)) deallocate(this%elmap_nk2mm)
+
+    ! Reset registers
+    this%mm_nel = 0
+    this%nk_nel = 0
+
+    return
+  end subroutine manager_transfer_free
 
 end module mesh_cnstr

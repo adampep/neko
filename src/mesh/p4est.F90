@@ -41,7 +41,6 @@ module p4est
   use tuple
   use htable
   use mesh_cnstr_amr
-  use mesh_redistribute
   use distdata
   use point
   use quad
@@ -159,7 +158,8 @@ module p4est
      ! 1<= vnmap(iv,iel) <= nin - independent node
      ! nin < vnmap(iv,iel) <= nin + npe - periodic node
      ! nin + npe < vnmap(iv,iel) <= nin + npe + nhf - face hanging node
-     ! nin + +npe + nhf < vnmap(iv,iel) <= nin + npe + nhf + nhe - edge hanging node
+     ! nin + +npe + nhf < vnmap(iv,iel) <= nin + npe + nhf + nhe - edge hanging
+     !                                                             node
      ! where
      ! nin = number of local independent nodes
      ! npe = number of local periodic nodes
@@ -333,8 +333,8 @@ module p4est
      ! element information
      type(p4_element_t) :: elem
    contains
-     procedure, public, pass(this) :: msh_get => p4_msh_get
-     procedure, public, pass(this) :: refine => p4_refine
+     procedure, public, pass(this) :: mesh_get => p4_mesh_get
+     procedure, public, pass(this) :: refine => p4_mesh_refine
      procedure, public, pass(this) :: free => p4_mesh_cnstr_free
   end type p4_mesh_cnstr_t
 
@@ -707,6 +707,9 @@ contains
     class(p4_mesh_cnstr_t), intent(inout) :: this
 
     ! Free types
+    call this%msh_trs%free()
+    call this%rcn_trs%free()
+
     call this%indn%free()
     call this%pern%free()
     call this%fchn%free()
@@ -800,7 +803,7 @@ contains
   end subroutine p4_manager_free
 
   ! Construct mesh information using p4est imported data
-  subroutine p4_msh_get(this, msh)
+  subroutine p4_mesh_get(this, msh)
     ! argument list
     class(p4_mesh_cnstr_t), intent(inout) :: this
     type(mesh_t), intent(inout) :: msh
@@ -900,18 +903,15 @@ contains
     call neko_log%end_section()
 
     return
-  end subroutine p4_msh_get
+  end subroutine p4_mesh_get
 
-  !> perform refinement based on refinement flag
-  subroutine p4_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
-       &ifmod, msh_rcn)
+  !> Perform mesh refinement based on refinement flag
+  subroutine p4_mesh_refine(this, ref_mark, el_gidx, level_max, ifmod)
     ! argument list
     class(p4_mesh_cnstr_t), intent(inout) :: this
     integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
-    type(mesh_manager_transfer_t), intent(in) :: msh_trs
     integer(i4), intent(in) :: level_max
     logical, intent(out) :: ifmod
-    type(mesh_reconstruct_transfer_t), intent(out) :: msh_rcn
     ! local variables
     integer(i4) :: il, itmp
     integer(i4), target, allocatable, dimension(:) :: pref_mark, pel_gnum,&
@@ -991,12 +991,12 @@ contains
        call wp4est_msh_get_hst(map_nr, rfn_nr, crs_nr, c_loc(elgl_map), &
             & c_loc(elgl_rfn), c_loc(elgl_crs))
        ! move data
-       msh_rcn%map_nr = map_nr
-       msh_rcn%rfn_nr = rfn_nr
-       msh_rcn%crs_nr = crs_nr
-       call MOVE_ALLOC(elgl_map, msh_rcn%elgl_map)
-       call MOVE_ALLOC(elgl_rfn, msh_rcn%elgl_rfn)
-       call MOVE_ALLOC(elgl_crs, msh_rcn%elgl_crs)
+       this%rcn_trs%map_nr = map_nr
+       this%rcn_trs%rfn_nr = rfn_nr
+       this%rcn_trs%crs_nr = crs_nr
+       call MOVE_ALLOC(elgl_map, this%rcn_trs%elgl_map)
+       call MOVE_ALLOC(elgl_rfn, this%rcn_trs%elgl_rfn)
+       call MOVE_ALLOC(elgl_crs, this%rcn_trs%elgl_crs)
     end if
 
     ! free memory
@@ -1004,7 +1004,7 @@ contains
          & nel_lnum, nel_nid)
 
     return
-  end subroutine p4_refine
+  end subroutine p4_mesh_refine
 
   ! Import data from p4est and store in a local type
   subroutine p4_mesh_import_data(p4)
@@ -1070,7 +1070,7 @@ contains
             if (p4%maxl > 0) then
                if (dim == 2) then
                   if (p4%fchn%lnum > 0) then
-                     ! each face hanging node is defined by 4 independent nodes
+                     ! each face hanging node is defined by 2 independent nodes
                      allocate(itmp4v21(2, p4%fchn%lnum), &
                           & rtmpv1(dim, p4%fchn%lnum))
                      call wp4est_nds_get_hfc(c_loc(itmp4v21), c_loc(rtmpv1))
@@ -1125,16 +1125,16 @@ contains
             allocate(itmp4v1(nelv), itmp4v21(nface, nelv))
             if (dim == 3) then
                nedge = 12
+               allocate(itmp4v22(nedge, nelv))
+               call wp4est_hang_get_info(c_loc(itmp4v1), c_loc(itmp4v21), &
+                    & c_loc(itmp4v22))
+               call MOVE_ALLOC(itmp4v1, p4%elem%hngel)
+               call MOVE_ALLOC(itmp4v21, p4%elem%hngfc)
+               call MOVE_ALLOC(itmp4v22, p4%elem%hnged)
             else
-               nedge = 0  !!!!! THIS SHOULD BE CHECKED FOR 2D SIMULATION !!!!!
+                call neko_error &
+                     &('P4est is not compiled for 2D case.')
             end if
-            allocate(itmp4v22(nedge, nelv))
-            call wp4est_hang_get_info(c_loc(itmp4v1), c_loc(itmp4v21), &
-                 & c_loc(itmp4v22))
-            call MOVE_ALLOC(itmp4v1, p4%elem%hngel)
-            call MOVE_ALLOC(itmp4v21, p4%elem%hngfc)
-            call MOVE_ALLOC(itmp4v22, p4%elem%hnged) &
-                 &!!!!! THIS SHOULD BE CHECKED FOR 2D SIMULATION !!!
 
             ! get global indexes of element vertices
             allocate(itmp4v21(nvert, nelv))
@@ -1187,6 +1187,9 @@ contains
                  MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
             call wp4est_lnodes_del()
 
+            ! one should change face ordering to keep nonconforming ones
+            ! at the beginning of the list. Face multiplicity could be important
+
             ! get edge information; this is not straightforward, as p4est
             ! does not provide a simple way to extract this information
             if (dim == 3) call p4_edge_get(p4)
@@ -1205,7 +1208,7 @@ contains
     return
   end subroutine p4_mesh_import_data
 
-  ! this subroutine should be adjusted for 2D; not done yet
+  ! Extract nodes on periodic bc and test mesh correctness
   subroutine p4_node_periodic_get(p4, vcoord, dim, nvert, nelv)
     ! argument list
     type(p4_mesh_cnstr_t), intent(inout) :: p4
@@ -1222,6 +1225,8 @@ contains
     integer(i4), allocatable, dimension(:,:) :: pvmap
     integer(i4), allocatable, dimension(:) :: pnmap
     real(dp), allocatable, dimension(:,:) :: pncoord
+
+    ! Add test for periodic bc in the domain
 
     ! find a number of vertices not included in node arrays
     nvper = 0
@@ -1257,7 +1262,7 @@ contains
                 if (ifvequal) then
                    ! hanging nodes should not be marked periodic
                    if (nvt > nin) &
-                        & call neko_error('Hangign node marked as periodic.')
+                        & call neko_error('Hanging node marked as periodic.')
                    if (htpts%get(ptsv, tmp) > 0) then
                       ! new node
                       nvper = nvper + 1
@@ -1265,13 +1270,15 @@ contains
                       call htpts%set(ptsv, idx)
                       call ptsv%set_id(nvper)
                       pvmap(jl, il) = nvper ! vertex to periodic node mapping
-                      pnmap(nvper) = nvt ! periodic node to independent node mapping
-                      pncoord(1:dim, nvper) = ptsv%x(1:dim) ! periodic node coordinates
+                      pnmap(nvper) = nvt ! periodic node to independent node
+                                         ! mapping
+                      pncoord(1:dim, nvper) = ptsv%x(1:dim) ! periodic node
+                                                            ! coordinates
                    else
-                      ! exisitng node
+                      ! existing node
                       ! check mapping consistency
-                      if (nvt /= tmp%x(2)) &
-                           & call neko_error('Inconsistent mapping of per. nodes to indep. nodes.')
+                      if (nvt /= tmp%x(2)) call neko_error &
+                           &('Inconsistent mapping of per. nodes to ind. node.')
                       pvmap(jl, il) = tmp%x(1) ! vertex to periodic node mapping
                    end if
                    exit
@@ -2249,26 +2256,23 @@ contains
     call neko_error('NEKO needs to be built with P4EST support')
   end subroutine p4_manager_free
 
-  subroutine p4_msh_get(this, msh)
+  subroutine p4_mesh_get(this, msh)
     class(p4_mesh_cnstr_t), intent(inout) :: p4
     type(mesh_t), intent(inout) :: msh
 
     call neko_error('NEKO needs to be built with P4EST support')
     return
-  end subroutine p4_msh_get
+  end subroutine p4_mesh_get
 
-  subroutine p4_refine(this, ref_mark, el_gidx, msh_trs, level_max,&
-       &ifmod, msh_rcn)
+  subroutine p4_mesh_refine(this, ref_mark, el_gidx, level_max, ifmod)
     class(p4_mesh_cnstr_t), intent(inout) :: this
     integer(i4), dimension(:), intent(in) :: ref_mark, el_gidx
-    type(mesh_manager_transfer_t), intent(in) :: msh_trs
     integer(i4), intent(in) :: level_max
     logical, intent(out) :: ifmod
-    type(mesh_reconstruct_transfer_t), intent(out) :: msh_rcn
 
     call neko_error('NEKO needs to be built with P4EST support')
     return
-  end subroutine p4_refine
+  end subroutine p4_mesh_refine
 
 #endif
 

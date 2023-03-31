@@ -71,7 +71,7 @@ contains
 
     if (suffix == "p4est") then
        call neko_log%message('Initialising mesh manager p4est')
-       allocate(p4_mesh_cnstr_t ::this%msh_imp )
+       allocate(p4_mesh_cnstr_t :: this%msh_imp)
 
        if (present(log_threshold)) then
           call p4_manager_init(mesh_file, log_threshold)

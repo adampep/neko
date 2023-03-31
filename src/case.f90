@@ -75,6 +75,7 @@ module case
      type(user_t) :: usr
      class(fluid_scheme_t), allocatable :: fluid
      type(scalar_pnpn_t), allocatable :: scalar
+     type(amr_t) :: amr
   end type case_t
 
 contains
@@ -162,7 +163,8 @@ contains
 
     if (amr) then
        ! initialise mesh manager and create mesh
-       call amr_init(mesh_file, C%msh)
+       C%amr = amr_t(mesh_file)
+       C%msh = C%amr%get_mesh()
     else
        msh_file = file_t(trim(mesh_file))
        call msh_file%read(C%msh)
@@ -177,17 +179,13 @@ contains
 
     ! pre-refine the mesh before starting fluid
     ! this should be done for fresh run only (no restart)
-    if (amr.and.C%params%restart_file=='') then
+    if (C%amr%ifamr().and.C%params%restart_file=='') then
        prerefine : block
          integer :: il
-         integer(i4), allocatable, dimension(:) :: ref_mark
-         ! perform refinement as many times as max refinement level
+         ! give possibility to fill all the refinement levels
          ! mark refinment by negative tstep
          do il = 1, C%params%amrlmax
-            allocate(ref_mark(C%msh%nelv), source = 0)
-            call C%usr%amr_refmark(ref_mark, -il, C%msh, C%params)
-            call amr_refine(C%msh, C%params, ref_mark)
-            deallocate(ref_mark)
+            call C%amr%msh_refine(C%msh, C%params, C%usr, 0.0_rp, -il)
          end do
        end block prerefine
     end if
@@ -446,7 +444,7 @@ contains
   subroutine case_free(C)
     type(case_t), intent(inout) :: C
 
-    call amr_finalise()
+    if (C%amr%ifamr()) call C%amr%free()
 
     if (allocated(C%fluid)) then
        call C%fluid%free()

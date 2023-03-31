@@ -51,7 +51,7 @@ module mesh_geom
      integer(i4) :: mpts ! local number of unique points in the mesh
      type(point_t), allocatable :: points(:) ! list of local unique points
      type(mesh_element_t), allocatable :: elements(:) ! list of local elements
-     ! place for deformation info
+     logical, allocatable :: dfrmd_el(:) ! element deformation flag
    contains
      procedure, pass(this) :: free => mesh_geom_free
   end type mesh_geom_t
@@ -73,6 +73,7 @@ contains
        end do
        deallocate(this%elements)
     end if
+    if (allocated(this%dfrmd_el)) deallocate(this%dfrmd_el)
 
     ! Reset registers
     this%nel = 0

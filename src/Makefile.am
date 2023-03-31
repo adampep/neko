@@ -335,8 +335,7 @@ endif
 if ENABLE_P4EST
 #
 # Place for p4est and sc related stuff
-neko_fortran_SOURCES += mesh/mesh_redistribute.f90\
-	mesh/mesh_cnstr.f90\
+neko_fortran_SOURCES += mesh/mesh_cnstr.f90\
 	mesh/mesh_cnstr_amr.f90\
 	mesh/mesh_manager.f90\
 	mesh/mesh_conn.f90\

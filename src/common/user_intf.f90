@@ -39,7 +39,7 @@ module user_intf
   use usr_inflow
   use parameters
   use num_types
-  use amr
+  use mesh_cnstr_amr
   implicit none
 
   !> Abstract interface for user defined initial conditions
@@ -214,14 +214,6 @@ contains
   subroutine dummy_user_mesh_setup(msh)
     type(mesh_t), intent(inout) :: msh
   end subroutine dummy_user_mesh_setup
-
-  !> Dummy user amr refinement flag mark
-  subroutine dummy_amr_refmark(refmark, tstep, msh, param)
-    integer, dimension(:), intent(out) :: refmark
-    integer, intent(in) :: tstep
-    type(mesh_t), intent(in) :: msh
-    type(param_t), intent(in) :: param
-  end subroutine dummy_amr_refmark
 
   !> Dummy user check
   subroutine dummy_user_check(t, tstep, u, v, w, p, coef, params)
