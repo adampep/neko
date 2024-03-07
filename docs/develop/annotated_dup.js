@@ -499,6 +499,9 @@ var annotated_dup =
       [ "map_t", "da/d40/structmap_1_1map__t.html", "da/d40/structmap_1_1map__t" ],
       [ "map_init", "d2/d3d/interfacemap_1_1map__init.html", "d2/d3d/interfacemap_1_1map__init" ]
     ] ],
+    [ "map_1d", "d8/d8b/namespacemap__1d.html", [
+      [ "map_1d_t", "d6/daf/structmap__1d_1_1map__1d__t.html", "d6/daf/structmap__1d_1_1map__1d__t" ]
+    ] ],
     [ "map_file", "dc/da2/namespacemap__file.html", [
       [ "map_file_t", "de/d14/structmap__file_1_1map__file__t.html", "de/d14/structmap__file_1_1map__file__t" ]
     ] ],
@@ -506,7 +509,8 @@ var annotated_dup =
       [ "material_properties_t", "d1/dd5/structmaterial__properties_1_1material__properties__t.html", "d1/dd5/structmaterial__properties_1_1material__properties__t" ]
     ] ],
     [ "math", "dd/d47/namespacemath.html", [
-      [ "abscmp", "de/d34/interfacemath_1_1abscmp.html", "de/d34/interfacemath_1_1abscmp" ]
+      [ "abscmp", "de/d34/interfacemath_1_1abscmp.html", "de/d34/interfacemath_1_1abscmp" ],
+      [ "relcmp", "d9/d4d/interfacemath_1_1relcmp.html", "d9/d4d/interfacemath_1_1relcmp" ]
     ] ],
     [ "matrix", "d0/de4/namespacematrix.html", [
       [ "matrix_t", "da/d95/structmatrix_1_1matrix__t.html", "da/d95/structmatrix_1_1matrix__t" ]
@@ -875,6 +879,9 @@ var annotated_dup =
     ] ],
     [ "time_scheme_controller", "dc/dfb/namespacetime__scheme__controller.html", [
       [ "time_scheme_controller_t", "d5/d79/structtime__scheme__controller_1_1time__scheme__controller__t.html", "d5/d79/structtime__scheme__controller_1_1time__scheme__controller__t" ]
+    ] ],
+    [ "time_step_controller", "d3/dda/namespacetime__step__controller.html", [
+      [ "time_step_controller_t", "d5/dab/structtime__step__controller_1_1time__step__controller__t.html", "d5/dab/structtime__step__controller_1_1time__step__controller__t" ]
     ] ],
     [ "tri", "df/d69/namespacetri.html", [
       [ "tri_t", "d6/d51/structtri_1_1tri__t.html", "d6/d51/structtri_1_1tri__t" ]

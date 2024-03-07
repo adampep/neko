@@ -139,6 +139,11 @@ var namespaces_dup =
     [ "distdata", "dc/d48/namespacedistdata.html", "dc/d48/namespacedistdata" ],
     [ "dofmap", "dd/dd2/namespacedofmap.html", "dd/dd2/namespacedofmap" ],
     [ "dong_outflow", "d5/d79/namespacedong__outflow.html", "d5/d79/namespacedong__outflow" ],
+    [ "drag_torque", "d0/d6f/namespacedrag__torque.html", [
+      [ "drag_torque_facet", "d0/d6f/namespacedrag__torque.html#a43fea5ee661f9c93108fab10bc380043", null ],
+      [ "drag_torque_pt", "d0/d6f/namespacedrag__torque.html#aa0aaba6013da47ebecf4ef3c36e0708c", null ],
+      [ "drag_torque_zone", "d0/d6f/namespacedrag__torque.html#a06338b4cbb5d4959b061910b60e2bf42", null ]
+    ] ],
     [ "dummy_device", "d0/d7a/namespacedummy__device.html", null ],
     [ "element", "d6/d0d/namespaceelement.html", "d6/d0d/namespaceelement" ],
     [ "entity", "db/de9/namespaceentity.html", "db/de9/namespaceentity" ],
@@ -181,13 +186,13 @@ var namespaces_dup =
     [ "field_series", "d6/d32/namespacefield__series.html", "d6/d32/namespacefield__series" ],
     [ "file", "da/d16/namespacefile.html", "da/d16/namespacefile" ],
     [ "filters", "d8/d6b/namespacefilters.html", [
-      [ "permeability_field", "d8/d6b/namespacefilters.html#a6457a21716e327016af15a8c9153e0cb", null ],
+      [ "permeability_field", "d8/d6b/namespacefilters.html#aeb6ab3bdc35ace182934e19e924f8781", null ],
       [ "smooth_step_field", "d8/d6b/namespacefilters.html#a6821c9aa8b19449830fc3783dcf07347", null ],
       [ "step_function_field", "d8/d6b/namespacefilters.html#ab9e3c604997d4cd46e8bc8727049ba5b", null ]
     ] ],
     [ "filters_cpu", "d9/d3d/namespacefilters__cpu.html", [
       [ "clamp_cpu", "d9/d3d/namespacefilters__cpu.html#a38d250a39b1d11c75c66c4ec6c7e2970", null ],
-      [ "permeability_cpu", "d9/d3d/namespacefilters__cpu.html#a980964006f7e557921cdd56841e8b05c", null ],
+      [ "permeability_cpu", "d9/d3d/namespacefilters__cpu.html#aa1fa0d603d65877cf3a3a52b15357c18", null ],
       [ "smooth_step_cpu", "d9/d3d/namespacefilters__cpu.html#a176e59a922a594ebb14a3fe12fe52625", null ],
       [ "step_function_cpu", "d9/d3d/namespacefilters__cpu.html#add89f6e38abe2bb614b27290c934d2f0", null ]
     ] ],
@@ -255,6 +260,7 @@ var namespaces_dup =
     [ "local_interpolation", "da/d80/namespacelocal__interpolation.html", "da/d80/namespacelocal__interpolation" ],
     [ "logger", "d8/da0/namespacelogger.html", "d8/da0/namespacelogger" ],
     [ "map", "d3/dca/namespacemap.html", "d3/dca/namespacemap" ],
+    [ "map_1d", "d8/d8b/namespacemap__1d.html", "d8/d8b/namespacemap__1d" ],
     [ "map_file", "dc/da2/namespacemap__file.html", "dc/da2/namespacemap__file" ],
     [ "material_properties", "d8/d15/namespacematerial__properties.html", "d8/d15/namespacematerial__properties" ],
     [ "math", "dd/d47/namespacemath.html", "dd/d47/namespacemath" ],
@@ -700,6 +706,7 @@ var namespaces_dup =
     [ "time_interpolator", "d7/d12/namespacetime__interpolator.html", "d7/d12/namespacetime__interpolator" ],
     [ "time_scheme", "dd/d54/namespacetime__scheme.html", "dd/d54/namespacetime__scheme" ],
     [ "time_scheme_controller", "dc/dfb/namespacetime__scheme__controller.html", "dc/dfb/namespacetime__scheme__controller" ],
+    [ "time_step_controller", "d3/dda/namespacetime__step__controller.html", "d3/dda/namespacetime__step__controller" ],
     [ "tri", "df/d69/namespacetri.html", "df/d69/namespacetri" ],
     [ "tri_mesh", "df/d32/namespacetri__mesh.html", "df/d32/namespacetri__mesh" ],
     [ "tuple", "df/dec/namespacetuple.html", "df/dec/namespacetuple" ],
