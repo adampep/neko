@@ -110,6 +110,16 @@ module tuple
      procedure, pass(this) :: equal => tuple_r8_equal
   end type tuple_r8_t
 
+  !> Mixed integer (\f$ x \f$) double integer (\f$ y \f$) 2-tuple \f$(x, y)\f$
+  type, extends(tuple_t), public :: tuple_i4i8_t
+     integer :: x
+     integer(i8) :: y
+   contains
+     procedure, pass(this) :: assign_tuple => tuple_i4i8_assign_tuple
+     procedure, pass(this) :: assign_vector => tuple_i4i8_assign_vector
+     procedure, pass(this) :: equal => tuple_i4i8_equal
+  end type tuple_i4i8_t
+
   !> Mixed integer (\f$ x \f$) double precision (\f$ y \f$) 2-tuple \f$(x, y)\f$
   type, extends(tuple_t), public :: tuple_i4r8_t
      integer :: x
@@ -407,6 +417,49 @@ contains
        end if
     end select
   end function tuple_r8_equal
+
+  !> Assign a mixed integer-double integer 2-tuple to a tuple
+  subroutine tuple_i4i8_assign_tuple(this, other)
+    class(tuple_i4i8_t), intent(inout) :: this
+    class(tuple_t), intent(in) :: other
+
+    select type(other)
+    type is(tuple_i4i8_t)
+       this%x = other%x
+       this%y = other%y
+    end select
+  end subroutine tuple_i4i8_assign_tuple
+
+  !> Assign a mixed intreger-double integer vector to a tuple
+  subroutine tuple_i4i8_assign_vector(this, x)
+    class(tuple_i4i8_t), intent(inout) :: this
+    class(*), dimension(:), intent(in) :: x
+
+    select type(x)
+    type is (integer)
+       this%x = x(1)
+       this%y = int(x(2), i8)
+    type is (integer(i8))
+       this%x = int(x(1))
+       this%y = x(2)
+    end select
+
+  end subroutine tuple_i4i8_assign_vector
+
+  !> Check if two mixed integer-double integer tuples are equal
+  pure function tuple_i4i8_equal(this, other) result(res)
+    class(tuple_i4i8_t), intent(in) :: this
+    class(tuple_t), intent(in) :: other
+    logical :: res
+
+    res = .false.
+    select type(other)
+    type is(tuple_i4i8_t)
+       if ((this%x .eq. other%x) .and. (this%y .eq. other%y)) then
+          res = .true.
+       end if
+    end select
+  end function tuple_i4i8_equal
 
   !> Assign a mixed integer-double precision 2-tuple to a tuple
   subroutine tuple_i4r8_assign_tuple(this, other)

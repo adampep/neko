@@ -3,7 +3,7 @@ subroutine test_stack_i4t2_init
   use pfunit
   use stack
   use math, only : NEKO_M_LN2
-  use num_types, only :rp
+  use num_types, only : rp
   implicit none
   type(stack_i4t2_t) :: s1, s2, s3
   integer, parameter :: size_t = ishft(1, ceiling(log(real(32, rp)) / NEKO_M_LN2))
