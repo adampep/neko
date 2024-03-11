@@ -51,7 +51,7 @@ adt/htable.o : adt/htable.f90 math/math.o adt/tuple.o mesh/point.o common/utils.
 adt/uset.o : adt/uset.f90 adt/htable.o config/num_types.o common/utils.o 
 adt/stack.o : adt/stack.f90 adt/tuple.o math/math.o common/structs.o mesh/point.o common/utils.o io/format/nmsh.o config/num_types.o 
 adt/tuple.o : adt/tuple.f90 config/num_types.o math/math.o 
-mesh/facet_zone.o : mesh/facet_zone.f90 common/utils.o adt/stack.o adt/tuple.o 
+mesh/facet_zone.o : mesh/facet_zone.f90 common/utils.o adt/stack.o adt/tuple.o config/num_types.o 
 mesh/point_zone.o : mesh/point_zone.f90 device/device.o config/neko_config.o sem/dofmap.o common/utils.o config/num_types.o adt/stack.o 
 mesh/point_zones/sphere_point_zone.o : mesh/point_zones/sphere_point_zone.f90 math/math.o common/json_utils.o config/num_types.o mesh/point_zone.o 
 mesh/point_zones/box_point_zone.o : mesh/point_zones/box_point_zone.f90 math/math.o common/json_utils.o config/num_types.o mesh/point_zone.o 

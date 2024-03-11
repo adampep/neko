@@ -32,8 +32,9 @@
 !
 !> Defines a zone as a subset of facets in a mesh
 module facet_zone
-  use tuple, only : tuple_i4_t, tuple4_i4_t
-  use stack, only : stack_i4t2_t, stack_i4t4_t
+  use num_types, only : i8
+  use tuple, only : tuple_i4_t, tuple_i4i8_t, tuple4_i8_t
+  use stack, only : stack_i4t2_t, stack_i4i8t2_t,stack_i8t4_t
   use utils, only : neko_error
   implicit none
   private
@@ -51,12 +52,13 @@ module facet_zone
   end type facet_zone_t
 
   type, public, extends(facet_zone_t) :: facet_zone_periodic_t
-     type(tuple_i4_t), allocatable :: p_facet_el(:)
-     type(stack_i4t2_t), private :: p_scratch
-     type(tuple4_i4_t), allocatable :: p_ids(:)  !< Periodic ids, same for each periodic point
-     type(stack_i4t4_t), private :: p_id_scratch
-     type(tuple4_i4_t), allocatable :: org_ids(:)  !< Original ids point ids
-     type(stack_i4t4_t), private :: org_id_scratch
+     type(tuple_i4i8_t), allocatable :: p_facet_el(:)
+     type(stack_i4i8t2_t), private :: p_scratch
+     !> Periodic ids, same for each periodic point
+     type(tuple4_i8_t), allocatable :: p_ids(:)
+     type(stack_i8t4_t), private :: p_id_scratch
+     type(tuple4_i8_t), allocatable :: org_ids(:)  !< Original ids point ids
+     type(stack_i8t4_t), private :: org_id_scratch
    contains
      procedure, pass(z) :: init => facet_zone_periodic_init
      procedure, pass(z) :: free => facet_zone_periodic_free
@@ -122,6 +124,7 @@ contains
   end subroutine facet_zone_finalize
 
   !> Add a (facet, el) tuple to an unfinalized zone
+  !! @note Local element number is used here
   subroutine facet_zone_add_facet(z, facet, el)
     class(facet_zone_t), intent(inout) :: z
     integer, intent(in) :: facet   !< Facet in the zone
@@ -182,12 +185,13 @@ contains
   end subroutine facet_zone_periodic_free
 
   !> Finalize a periodic zone list
-  !! @details Create a static list of (facet,el) tuples
+  !! @details Create a static list of (facet,el) tuples. The element number
+  !! of the periodic neighbour is a global number
   subroutine facet_zone_periodic_finalize(z)
     class(facet_zone_periodic_t), intent(inout) :: z
-    type(tuple_i4_t), pointer :: tp(:)
-    type(tuple4_i4_t), pointer :: tp2(:)
-    type(tuple4_i4_t), pointer :: tp3(:)
+    type(tuple_i4i8_t), pointer :: tp(:)
+    type(tuple4_i8_t), pointer :: tp2(:)
+    type(tuple4_i8_t), pointer :: tp3(:)
     integer :: i
 
     if (.not. z%finalized) then
@@ -224,17 +228,18 @@ contains
   end subroutine facet_zone_periodic_finalize
 
   !> Add a (facet, el) tuple to an unfinalized zone
-  subroutine facet_zone_periodic_add_facet(z, facet, el, p_facet, p_el, pids, org_ids)
+  subroutine facet_zone_periodic_add_facet(z, facet, el, p_facet, p_el, pids, &
+       & org_ids)
     class(facet_zone_periodic_t), intent(inout) :: z
     integer, intent(in) :: facet   !< Facet in the zone
-    integer, intent(in) :: el      !< Element  in the zone
+    integer, intent(in) :: el      !< Element  in the zone (local number)
     integer, intent(in) :: p_facet !< Facet at periodic length
-    integer, intent(in) :: p_el    !< Element at periodic length
-    integer, intent(in) :: pids(4) !< Periodic id of points
-    integer, intent(in) :: org_ids(4) !< Original id of points
-    type(tuple_i4_t) :: t
-    type(tuple4_i4_t) :: t2
-    type(tuple4_i4_t) :: t3
+    integer(i8), intent(in) :: p_el    !< Element at periodic length (global)
+    integer(i8), intent(in) :: pids(4) !< Periodic id of points
+    integer(i8), intent(in) :: org_ids(4) !< Original id of points
+    type(tuple_i4i8_t) :: t
+    type(tuple4_i8_t) :: t2
+    type(tuple4_i8_t) :: t3
 
     if (z%finalized) then
        call neko_error('Facet zone already finalized')
@@ -242,7 +247,8 @@ contains
 
     call z%add_facet(facet, el)
 
-    t%x = (/ p_facet, p_el /)
+    t%x = p_facet
+    t%y = p_el
     call z%p_scratch%push(t)
     t2%x = pids
     call z%p_id_scratch%push(t2)
