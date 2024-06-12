@@ -4,14 +4,16 @@ on:
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron:  '30 03 * * *'
-#  workflow_dispatch:
-  
+  workflow_dispatch:
+
 jobs:
   build-dev-documentation:
+    # This workflow runs only on the official repository.
+    if: github.repository == 'ExtremeFLOW/neko'
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Setup env.
       run: |
         sudo apt-get update && sudo apt-get install -y git openmpi-bin libopenmpi-dev autoconf automake autotools-dev libopenblas-dev make git m4 python3 doxygen fonts-freefont-ttf graphviz
@@ -28,16 +30,16 @@ jobs:
         ./regen.sh
         ./configure FC=${FC}
         make html
-    
+
     # Deploy the HTML documentation to GitHub Pages
     - name: GH Pages Deployment
-      uses: peaceiris/actions-gh-pages@v3
+      uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./doc/html/
         allow_empty_commit: false
+        keep_files: false
         force_orphan: false
         publish_branch: gh-pages
         destination_dir: docs/develop
-        keep_files: false
         enable_jekyll: true

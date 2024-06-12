@@ -78,7 +78,7 @@ contains
     integer :: nelv, gdim, nzones, ncurves
     integer :: el_idx
     integer(i8) :: itmp8, element_offset
-    type(point_t) :: p(8)
+    type(point_t), target :: p(8)
     type(linear_dist_t) :: dist
     character(len=LOG_SIZE) :: log_buf
 
