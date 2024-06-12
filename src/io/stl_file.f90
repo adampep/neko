@@ -70,7 +70,8 @@ contains
     type(point_t) :: p(3)
     type(stl_hdr_t) :: stl_hdr
     type(stl_triangle_t), allocatable :: stl_tri(:)
-    integer :: i, p_idx, ierr
+    integer :: i, ierr
+    integer(i8) :: p_idx
 
     call this%check_exists()
 

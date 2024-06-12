@@ -33,6 +33,7 @@
 !> NEKTON mesh data in re2 format
 !! @details This module is used to read/write binary NEKTION mesh data
 module re2_file
+  use num_types, only : i8
   use generic_file
   use num_types
   use utils
@@ -69,6 +70,7 @@ contains
     character(len=54) :: hdr_str
     character(len=80) :: hdr_full
     integer :: nel, ndim, nelv, ierr, nBCre2
+    integer(i8) :: itmp8
     type(MPI_Status) :: status
     type(MPI_File) :: fh
     integer (kind=MPI_OFFSET_KIND) :: mpi_offset
@@ -104,7 +106,8 @@ contains
     read(hdr_full, '(a5)') hdr_ver
 
     if (hdr_ver .eq. '#v004') then
-       read(hdr_full, '(a5,i16,i3,i16,i4,a36)') hdr_ver, nel, ndim, nelv, nBCre2, hdr_str
+       read(hdr_full, '(a5,i16,i3,i16,i4,a36)') hdr_ver, nel, ndim, nelv, &
+            & nBCre2, hdr_str
        v2_format = .true.
     else if (hdr_ver .eq. '#v002' .or. hdr_ver .eq. '#v003') then
        read(hdr_full, '(a5,i9,i3,i9,a54)') hdr_ver, nel, ndim, nelv, hdr_str
@@ -147,7 +150,8 @@ contains
     if (ierr .ne. 0) then
        call neko_log%error("Can't open binary NEKTON file ")
     end if
-    dist = linear_dist_t(nelv, pe_rank, pe_size, NEKO_COMM)
+    itmp8 = nelv
+    dist = linear_dist_t(itmp8, pe_rank, pe_size, NEKO_COMM)
 
 
     call msh%init(ndim, dist)
@@ -169,30 +173,36 @@ contains
     ! Set offset to start of curved side data
     mpi_offset = RE2_HDR_SIZE * MPI_CHARACTER_SIZE + MPI_REAL_SIZE
     if (ndim .eq. 2) then
-       mpi_offset = mpi_offset + int(dist%num_global(),i8) * int(re2_data_xy_size,i8)
+       mpi_offset = mpi_offset + dist%num_global() * &
+            & int(re2_data_xy_size,i8)
     else
-       mpi_offset = mpi_offset + int(dist%num_global(),i8) * int(re2_data_xyz_size,i8)
+       mpi_offset = mpi_offset + dist%num_global() * &
+            & int(re2_data_xyz_size,i8)
     end if
 
     !> @todo Add support for curved side data
     !! Skip curved side data
     if (v2_format) then
-       call MPI_File_read_at_all(fh, mpi_offset, t2, 1, MPI_DOUBLE_PRECISION, status, ierr)
+       call MPI_File_read_at_all(fh, mpi_offset, t2, 1, MPI_DOUBLE_PRECISION, &
+            & status, ierr)
        ncurv = int(t2)
        mpi_offset = mpi_offset + MPI_DOUBLE_PRECISION_SIZE
        call re2_file_read_curve(msh, ncurv, dist, fh, mpi_offset, v2_format)
        mpi_offset = mpi_offset + int(ncurv,i8) * int(re2_data_cv_size,i8)
-       call MPI_File_read_at_all(fh, mpi_offset, t2, 1, MPI_DOUBLE_PRECISION, status, ierr)
+       call MPI_File_read_at_all(fh, mpi_offset, t2, 1, MPI_DOUBLE_PRECISION, &
+            & status, ierr)
        nbcs = int(t2)
        mpi_offset = mpi_offset + MPI_DOUBLE_PRECISION_SIZE
 
        call re2_file_read_bcs(msh, nbcs, dist, fh, mpi_offset, v2_format)
     else
-       call MPI_File_read_at_all(fh, mpi_offset, ncurv, 1, MPI_INTEGER, status, ierr)
+       call MPI_File_read_at_all(fh, mpi_offset, ncurv, 1, MPI_INTEGER, &
+            & status, ierr)
        mpi_offset = mpi_offset + MPI_INTEGER_SIZE
        call re2_file_read_curve(msh, ncurv, dist, fh, mpi_offset, v2_format)
        mpi_offset = mpi_offset + int(ncurv,i8) * int(re2_data_cv_size,i8)
-       call MPI_File_read_at_all(fh, mpi_offset, nbcs, 1, MPI_INTEGER, status, ierr)
+       call MPI_File_read_at_all(fh, mpi_offset, nbcs, 1, MPI_INTEGER, &
+            & status, ierr)
        mpi_offset = mpi_offset + MPI_INTEGER_SIZE
 
        call re2_file_read_bcs(msh, nbcs, dist, fh, mpi_offset, v2_format)
@@ -311,7 +321,7 @@ contains
     integer, intent(in) :: re2_data_xyz_size
     logical, intent(in) :: v2_format
     type(linear_dist_t) :: dist
-    integer :: element_offset
+    integer(i8) :: element_offset
     type(re2v1_xy_t), allocatable :: re2v1_data_xy(:)
     type(re2v1_xyz_t), allocatable :: re2v1_data_xyz(:)
     type(re2v2_xy_t), allocatable :: re2v2_data_xy(:)
@@ -326,7 +336,7 @@ contains
     nelv = dist%num_local()
     element_offset = dist%start_idx()
 
-    call htp%init(2*nel, ndim)
+    call htp%init(2*nel, element_offset)
     pt_idx = 0
     if (ndim .eq. 2) then
        mpi_offset = mpi_offset + element_offset * re2_data_xy_size
@@ -486,7 +496,9 @@ contains
        case ('m')
           curve_type(id,el_idx) = 4
        case default
-          write(*,*) chtemp, 'curve type not supported yet, treating mesh as non-curved',id, el_idx
+          write(*,*) chtemp, &
+               & 'curve type not supported yet, treating mesh as non-curved', &
+               & id, el_idx
 
           curve_skip = .true.
        end select
@@ -656,12 +668,13 @@ contains
     type(htable_pt_t), intent(inout) :: htp
     type(point_t), intent(inout) :: p
     integer, intent(inout) :: idx
-    integer :: tmp
+    integer(i8) :: tmp
 
     if (htp%get(p, tmp) .gt. 0) then
        idx = idx + 1
-       call htp%set(p, idx)
-       call p%set_id(idx)
+       tmp = idx
+       call htp%set(p, tmp)
+       call p%set_id(tmp)
     else
        call p%set_id(tmp)
     end if

@@ -33,6 +33,7 @@
 !> NEKTON session data reader
 !! @details This module is used to read NEKTON session data in ascii
 module rea_file
+  use num_types, only : i8
   use generic_file
   use num_types
   use utils
@@ -71,6 +72,7 @@ contains
     integer :: ndim, nparam, nskip, nlogic, ncurve
     integer :: nelgs, nelgv, i, j, ierr, l
     integer :: el_idx, pt_idx
+    integer(i8) :: itmp8, start_el, end_el
     logical :: read_param, read_bcs, read_map
     real(kind=dp) :: xc(8), yc(8), zc(8), curve(5)
     real(kind=dp), allocatable :: bc_data(:,:,:)
@@ -79,7 +81,7 @@ contains
     type(re2_file_t) :: re2_file
     type(map_file_t) :: map_file
     character(len=1024) :: re2_fname, map_fname
-    integer :: start_el, end_el, nel, edge
+    integer :: nel, edge
     type(linear_dist_t) :: dist
     type(map_t) :: nm
     type(htable_pt_t) :: htp
@@ -88,7 +90,7 @@ contains
     integer, parameter, dimension(6) :: facet_map = (/3, 2, 4, 1, 5, 6/)
     logical :: curve_skip = .false.
     character(len=LOG_SIZE) :: log_buf
-    
+
     call this%check_exists()
 
     select type(data)
@@ -169,14 +171,15 @@ contains
        end if
 
        ! Use a load-balanced linear distribution
-       dist = linear_dist_t(nelgv, pe_rank, pe_size, NEKO_COMM)
+       itmp8 = nelgv
+       dist = linear_dist_t(itmp8, pe_rank, pe_size, NEKO_COMM)
        nel = dist%num_local()
        start_el = dist%start_idx() + 1
        end_el = dist%end_idx() + 1
 
        call msh%init(ndim, dist)
 
-       call htp%init(2**ndim * nel, ndim)
+       call htp%init(2**ndim * nel, itmp8)
 
        el_idx = 1
        pt_idx = 0
@@ -202,7 +205,7 @@ contains
              read(9, *) (zc(j),j=5,8)
              if (i .ge. start_el .and. i .le. end_el) then
                 do j = 1, 8
-                   p(j) = point_t(real(xc(j),dp), real(yc(j),dp), real(zc(j),dp))
+                   p(j) = point_t(real(xc(j),dp), real(yc(j),dp),real(zc(j),dp))
                    call rea_file_add_point(htp, p(j), pt_idx)
                 end do
                 ! swap vertices to keep symmetric vertex numbering in neko
@@ -295,7 +298,7 @@ contains
                       p_facet = facet_map(int(bc_data(3+off,j,i)))
                       call msh%get_facet_ids(sym_facet, el_idx, pids)
                       call msh%mark_periodic_facet(sym_facet, el_idx, &
-                                        p_facet, p_el_idx, pids)
+                           p_facet, p_el_idx, pids)
                    end select
                 end do
              end if
@@ -310,7 +313,7 @@ contains
                       p_el_idx = int(bc_data(2+off,j,i))
                       p_facet = facet_map(int(bc_data(3+off,j,i)))
                       call msh%create_periodic_ids(sym_facet, el_idx, &
-                                                   p_facet, p_el_idx)
+                           p_facet, p_el_idx)
                    end select
                 end do
              end if
@@ -325,7 +328,7 @@ contains
                       p_el_idx = int(bc_data(2+off,j,i))
                       p_facet = facet_map(int(bc_data(3+off,j,i)))
                       call msh%create_periodic_ids(sym_facet, el_idx, &
-                                                   p_facet, p_el_idx)
+                           p_facet, p_el_idx)
                    end select
                 end do
              end if
@@ -340,7 +343,7 @@ contains
                       p_el_idx = int(bc_data(2+off,j,i))
                       p_facet = facet_map(int(bc_data(3+off,j,i)))
                       call msh%create_periodic_ids(sym_facet, el_idx, &
-                                                   p_facet, p_el_idx)
+                           p_facet, p_el_idx)
                    end select
                 end do
              end if
@@ -374,12 +377,13 @@ contains
     type(htable_pt_t), intent(inout) :: htp
     type(point_t), intent(inout) :: p
     integer, intent(inout) :: idx
-    integer :: tmp
+    integer(i8) :: tmp
 
     if (htp%get(p, tmp) .gt. 0) then
        idx = idx + 1
-       call htp%set(p, idx)
-       call p%set_id(idx)
+       tmp = idx
+       call htp%set(p, tmp)
+       call p%set_id(tmp)
     else
        call p%set_id(tmp)
     end if
