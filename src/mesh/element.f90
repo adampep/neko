@@ -31,7 +31,7 @@
 ! POSSIBILITY OF SUCH DAMAGE.
 !
 module element
-  use num_types, only :: i8
+  use num_types, only : i8, dp
   use entity, only : entity_t
   use tuple, only : tuple_t
   use point, only : point_ptr, point_t

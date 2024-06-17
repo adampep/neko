@@ -33,7 +33,7 @@
 !> Defines practical data distributions
 module datadist
   use mpi_f08, only : MPI_Comm
-  use num_types, only : i8
+  use num_types, only : i4, i8
   implicit none
   private
 
@@ -77,7 +77,7 @@ contains
     this%pe_size = size
 
     this%L = floor(dble(this%M) / dble(this%pe_size))
-    this%R = modulo(this%M, this%pe_size)
+    this%R = int(modulo(this%M, int(this%pe_size, i8)), i4)
     this%Ip = floor((dble(this%M) + dble(this%pe_size) - &
          dble(this%pe_rank) - 1d0) / dble(this%pe_size))
   end function linear_dist_init
