@@ -33,7 +33,7 @@
 !> NEKTON fld file format
 !! @details this module defines interface to write NEKTON's fld fields
 module fld_file
-  use num_types, only : i8
+  use num_types, only : i4, i8
   use generic_file
   use field
   use field_list
@@ -41,7 +41,7 @@ module fld_file
   use space
   use structs, only: array_ptr_t
   use vector
-  use fld_file_data
+  use fld_file_data, only : fld_file_data_t
   use mean_flow
   use mean_sqr_flow
   use vector, only : vector_t
@@ -49,7 +49,7 @@ module fld_file
   use mesh, only : mesh_t
   use utils
   use comm
-  use datadist
+  use datadist, only : linear_dist_t
   use math, only : vlmin, vlmax
   use neko_mpi_types
   implicit none
@@ -87,8 +87,9 @@ contains
     character(len=1024) :: fname
     character(len=1024) :: start_field
     integer :: i, ierr, n, suffix_pos, tslash_pos
-    integer :: lx, ly, lz, lxyz, gdim, glb_nelv, nelv, offset_el
-    integer, allocatable :: idx(:)
+    integer :: lx, ly, lz, lxyz, gdim, glb_nelv_i4, nelv
+    integer(i8) :: glb_nelv, offset_el
+    integer, allocatable :: idx_i4(:)
     type(MPI_Status) :: status
     type(MPI_File) :: fh
     integer (kind=MPI_OFFSET_KIND) :: mpi_offset, byte_offset, temp_offset
@@ -143,9 +144,11 @@ contains
        glb_nelv = data%glb_nelv
        offset_el = data%offset_el
 
-       allocate(idx(nelv))
+       ! fld format is constrained to glb_nelv given by i4 only;
+       ! cast element index
+       allocate(idx_i4(nelv))
        do i = 1, nelv
-          idx(i) = data%idx(i)
+          idx_i4(i) = int(data%idx(i), i4)
        end do
     type is (field_t)
        p%ptr => data%x(:,1,1,1)
@@ -228,9 +231,11 @@ contains
        offset_el = msh%offset_el
        gdim = msh%gdim
        ! Store global idx of each element
-       allocate(idx(msh%nelv))
+       allocate(idx_i4(msh%nelv))
+       ! fld format is constrained to glb_nelv given by i4 only;
+       ! cast element index
        do i = 1, msh%nelv
-          idx(i) = msh%elements(i)%e%id()
+          idx_i4(i) = int(msh%elements(i)%e%id(), i4)
        end do
     end if
 
@@ -291,8 +296,13 @@ contains
        i = i + 1
     end if
 
+    ! For now fld supports msh%glb_nelv bounded by integer4
+    if (glb_nelv > huge(glb_nelv_i4)) &
+         & call neko_error('fld does not support int8 for element count')
+    glb_nelv_i4 = int(glb_nelv, i4)
+
     !> @todo fix support for single precision output?
-    write(hdr, 1) FLD_DATA_SIZE, lx, ly, lz,glb_nelv,glb_nelv,&
+    write(hdr, 1) FLD_DATA_SIZE, lx, ly, lz, glb_nelv_i4, glb_nelv_i4,&
          time, this%counter, 1, 1, (rdcode(i),i=1,10)
 1   format('#std',1x,i1,1x,i2,1x,i2,1x,i2,1x,i10,1x,i10,1x,e20.13,&
          1x,i9,1x,i6,1x,i6,1x,10a)
@@ -311,56 +321,49 @@ contains
     call MPI_File_write_all(fh, test_pattern, 1, MPI_REAL, status, ierr)
     mpi_offset = mpi_offset  + MPI_REAL_SIZE
 
-    byte_offset = mpi_offset + &
-         int(offset_el, i8) * int(MPI_INTEGER_SIZE, i8)
-    call MPI_File_write_at_all(fh, byte_offset, idx, nelv, &
-         MPI_INTEGER, status, ierr)
-    mpi_offset = mpi_offset + int(glb_nelv, i8) * int(MPI_INTEGER_SIZE, i8)
+    byte_offset = mpi_offset + offset_el * int(MPI_INTEGER_SIZE, i8)
+    call MPI_File_write_at_all(fh, byte_offset, idx_i4, nelv, &
+         & MPI_INTEGER, status, ierr)
+    mpi_offset = mpi_offset + glb_nelv * int(MPI_INTEGER_SIZE, i8)
 
-    deallocate(idx)
+    deallocate(idx_i4)
 
     if (write_mesh) then
 
-       byte_offset = mpi_offset + int(offset_el, i8) * &
-            (int(gdim*lxyz, i8) * &
-            int(FLD_DATA_SIZE, i8))
+       byte_offset = mpi_offset + offset_el * (int(gdim * lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
 
-       call fld_file_write_vector_field(this, fh, byte_offset, x%ptr, y%ptr, z%ptr, n,  gdim, lxyz, nelv)
-       mpi_offset = mpi_offset + int(glb_nelv, i8) * &
-            (int(gdim *lxyz, i8) * &
-            int(FLD_DATA_SIZE, i8))
+       call fld_file_write_vector_field(this, fh, byte_offset, x%ptr, y%ptr, &
+            & z%ptr, n,  gdim, lxyz, nelv)
+       mpi_offset = mpi_offset + glb_nelv * (int(gdim *lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
     end if
 
     if (write_velocity) then
-       byte_offset = mpi_offset + int(offset_el, i8) * &
-            (int(gdim * (lxyz), i8) * &
-            int(FLD_DATA_SIZE, i8))
-       call fld_file_write_vector_field(this, fh, byte_offset, u%ptr, v%ptr, w%ptr, n, gdim, lxyz, nelv)
+       byte_offset = mpi_offset + offset_el * (int(gdim * lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
+       call fld_file_write_vector_field(this, fh, byte_offset, u%ptr, v%ptr, &
+            & w%ptr, n, gdim, lxyz, nelv)
 
-       mpi_offset = mpi_offset + int(glb_nelv, i8) * &
-            (int(gdim * (lxyz), i8) * &
-            int(FLD_DATA_SIZE, i8))
+       mpi_offset = mpi_offset + glb_nelv * (int(gdim * lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
 
     end if
 
     if (write_pressure) then
-       byte_offset = mpi_offset + int(offset_el, i8) * &
-            (int((lxyz), i8) * &
-            int(FLD_DATA_SIZE, i8))
+       byte_offset = mpi_offset + offset_el * (int(lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
        call fld_file_write_field(this, fh, byte_offset, p%ptr, n)
-       mpi_offset = mpi_offset + int(glb_nelv, i8) * &
-            (int((lxyz), i8) * &
-            int(FLD_DATA_SIZE, i8))
+       mpi_offset = mpi_offset + glb_nelv * (int(lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
     end if
 
     if (write_temperature) then
-       byte_offset = mpi_offset + int(offset_el, i8) * &
-            (int((lxyz), i8) * &
-            int(FLD_DATA_SIZE, i8))
+       byte_offset = mpi_offset + offset_el * (int(lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
        call fld_file_write_field(this, fh, byte_offset, tem%ptr, n)
-       mpi_offset = mpi_offset + int(glb_nelv, i8) * &
-            (int((lxyz), i8) * &
-            int(FLD_DATA_SIZE, i8))
+       mpi_offset = mpi_offset + glb_nelv * (int(lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
     end if
 
     temp_offset = mpi_offset
@@ -369,17 +372,14 @@ contains
        !Without this redundant if statement, Cray optimizes this loop to
        !oblivion
        if (i .eq. 2) then
-          mpi_offset = int(temp_offset,i8) + int(1_i8*glb_nelv, i8) * &
-                           (int(lxyz, i8) * &
-                       int(FLD_DATA_SIZE, i8))
+          mpi_offset = int(temp_offset, i8) + glb_nelv * (int(lxyz, i8) * &
+               & int(FLD_DATA_SIZE, i8))
        end if
-       byte_offset = int(mpi_offset,i8) + int(offset_el, i8) * &
-            (int((lxyz), i8) * &
-            int(FLD_DATA_SIZE, i8))
+       byte_offset = int(mpi_offset, i8) + offset_el * (int(lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
        call fld_file_write_field(this, fh, byte_offset, scalar_fields(i)%ptr, n)
-       mpi_offset = int(mpi_offset,i8) + int(glb_nelv, i8) * &
-            (int(lxyz, i8) * &
-            int(FLD_DATA_SIZE, i8))
+       mpi_offset = int(mpi_offset, i8) + glb_nelv * (int(lxyz, i8) * &
+            & int(FLD_DATA_SIZE, i8))
     end do
 
 
@@ -387,57 +387,41 @@ contains
     if (write_mesh) then
        !The offset is: mpioff + element_off*2(min max value)*
        ! 4(single precision)*gdim(dimensions)
-       byte_offset = int(mpi_offset,i8) + &
-                     int(offset_el, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8) * &
-                     int(gdim, i8)
-       call fld_file_write_metadata_vector(this, fh, byte_offset, x%ptr, y%ptr, z%ptr, gdim, lxyz, nelv)
-       mpi_offset = int(mpi_offset,i8) + &
-                     int(glb_nelv, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8) * &
-                     int(gdim, i8)
+       byte_offset = int(mpi_offset, i8) + offset_el * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8) * int(gdim, i8)
+       call fld_file_write_metadata_vector(this, fh, byte_offset, x%ptr, &
+            & y%ptr, z%ptr, gdim, lxyz, nelv)
+       mpi_offset = int(mpi_offset, i8) + glb_nelv * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8) * int(gdim, i8)
     end if
 
     if (write_velocity) then
-       byte_offset = int(mpi_offset,i8) + &
-                     int(offset_el, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8) * &
-                     int(gdim, i8)
-       call fld_file_write_metadata_vector(this, fh, byte_offset, u%ptr, v%ptr, w%ptr, gdim, lxyz, nelv)
-       mpi_offset = int(mpi_offset,i8) + &
-                     int(glb_nelv, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8) * &
-                     int(gdim, i8)
+       byte_offset = int(mpi_offset, i8) + offset_el * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8) * int(gdim, i8)
+       call fld_file_write_metadata_vector(this, fh, byte_offset, u%ptr, &
+            & v%ptr, w%ptr, gdim, lxyz, nelv)
+       mpi_offset = int(mpi_offset, i8) + glb_nelv * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8) * int(gdim, i8)
 
     end if
 
     if (write_pressure) then
-       byte_offset = int(mpi_offset,i8) + &
-                     int(offset_el, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8)
-       call fld_file_write_metadata_scalar(this, fh, byte_offset, p%ptr, lxyz, nelv)
-       mpi_offset = int(mpi_offset,i8) + &
-                     int(glb_nelv, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8)
+       byte_offset = int(mpi_offset, i8) + offset_el * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8)
+       call fld_file_write_metadata_scalar(this, fh, byte_offset, p%ptr, lxyz, &
+            & nelv)
+       mpi_offset = int(mpi_offset, i8) + glb_nelv * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8)
 
     end if
 
     if (write_temperature) then
-       byte_offset = int(mpi_offset,i8) + &
-                     int(offset_el, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8)
-       call fld_file_write_metadata_scalar(this, fh, byte_offset, tem%ptr, lxyz, nelv)
-       mpi_offset = int(mpi_offset,i8) + &
-                     int(glb_nelv, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8)
+       byte_offset = int(mpi_offset, i8) + offset_el * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8)
+       call fld_file_write_metadata_scalar(this, fh, byte_offset, tem%ptr, &
+            & lxyz, nelv)
+       mpi_offset = int(mpi_offset, i8) + glb_nelv * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8)
 
     end if
 
@@ -449,21 +433,16 @@ contains
        !Without this redundant if statement, Cray optimizes this loop to
        ! oblivion
        if (i .eq. 2) then
-          mpi_offset = int(temp_offset,i8) + &
-                       int(1_i8*glb_nelv, i8) * &
-                       int(2, i8) * &
-                       int(MPI_REAL_SIZE, i8)
+          mpi_offset = int(temp_offset, i8) + glb_nelv * 2_i8 * &
+               & int(MPI_REAL_SIZE, i8)
        end if
 
-       byte_offset = int(mpi_offset,i8) + &
-                     int(offset_el, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8)
-       call fld_file_write_metadata_scalar(this, fh, byte_offset, scalar_fields(i)%ptr, lxyz, nelv)
-       mpi_offset = int(mpi_offset,i8) + &
-                     int(glb_nelv, i8) * &
-                     int(2, i8) * &
-                     int(MPI_REAL_SIZE, i8)
+       byte_offset = int(mpi_offset, i8) + offset_el * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8)
+       call fld_file_write_metadata_scalar(this, fh, byte_offset, &
+            & scalar_fields(i)%ptr, lxyz, nelv)
+       mpi_offset = int(mpi_offset,i8) + glb_nelv * 2_i8 * &
+            & int(MPI_REAL_SIZE, i8)
     end do
 
 
@@ -505,13 +484,13 @@ contains
 
      j = 1
      do el=1,nelv
-        buffer(j+0) = real(vlmin(x(1,el),lxyz),sp)
-        buffer(j+1) = real(vlmax(x(1,el),lxyz),sp)
+        buffer(j+0) = real(vlmin(x(1,el),lxyz) ,sp)
+        buffer(j+1) = real(vlmax(x(1,el),lxyz) ,sp)
         buffer(j+2) = real(vlmin(y(1,el),lxyz) ,sp)
-        buffer(j+3) = real(vlmax(y(1,el),lxyz),sp)
+        buffer(j+3) = real(vlmax(y(1,el),lxyz) ,sp)
         j = j + 4
         buffer(j+0) = real(vlmin(z(1,el),lxyz) ,sp)
-        buffer(j+1) = real(vlmax(z(1,el),lxyz),sp)
+        buffer(j+1) = real(vlmax(z(1,el),lxyz) ,sp)
         j = j + 2
      enddo
 
@@ -636,7 +615,6 @@ contains
     class(*), target, intent(inout) :: data
     character(len=132) :: hdr
     integer :: ierr, suffix_pos, i, j
-    integer(i8) :: itmp8
     type(MPI_File) :: fh
     type(MPI_Status) :: status
     character(len=1024) :: fname, meta_fname, string
@@ -644,7 +622,9 @@ contains
     logical :: read_temp
     character(len=6) :: id_str
     integer (kind=MPI_OFFSET_KIND) :: mpi_offset, byte_offset
-    integer :: lx, ly, lz, glb_nelv, counter, lxyz
+    integer :: lx, ly, lz, glb_nelv_i4, counter, lxyz
+    integer(i8) :: glb_nelv
+    integer, allocatable :: idx_i4(:)
     integer :: FLD_DATA_SIZE, n_scalars, n
     real(kind=rp) ::  time
     real(kind=sp) :: temp
@@ -702,14 +682,14 @@ contains
 
        call MPI_File_read_all(fh, hdr, 132, MPI_CHARACTER,  status, ierr)
        !This read can prorbably be done wihtout the temp variables, temp_str,i,j
-
-       read(hdr, 1) temp_str,FLD_DATA_SIZE, lx, ly, lz, glb_nelv, glb_nelv,&
-          time, counter, i, j, (rdcode(i),i=1,10)
+       ! fld format is constrained to glb_nelv given by i4 only
+       read(hdr, 1) temp_str,FLD_DATA_SIZE, lx, ly, lz, glb_nelv_i4, &
+            & glb_nelv_i4, time, counter, i, j, (rdcode(i),i=1,10)
 1      format(4a,1x,i1,1x,i2,1x,i2,1x,i2,1x,i10,1x,i10,1x,e20.13,&
-         1x,i9,1x,i6,1x,i6,1x,10a)
+            1x,i9,1x,i6,1x,i6,1x,10a)
+       glb_nelv = int(glb_nelv_i4, i8)
        if (data%nelv .eq. 0) then
-          itmp8 = glb_nelv
-          dist = linear_dist_t(itmp8, pe_rank, pe_size, NEKO_COMM)
+          dist = linear_dist_t(glb_nelv, pe_rank, pe_size, NEKO_COMM)
           data%nelv = dist%num_local()
           data%offset_el = dist%start_idx()
        end if
@@ -818,66 +798,61 @@ contains
        else
           allocate(data%idx(data%nelv))
        end if
+       ! fld format is constrained to glb_nelv given by i4 only
+       allocate(idx_i4(data%nelv))
 
-       byte_offset = mpi_offset + &
-           int(data%offset_el, i8) * int(MPI_INTEGER_SIZE, i8)
+       byte_offset = mpi_offset + data%offset_el * int(MPI_INTEGER_SIZE, i8)
 
        call MPI_File_read_at_all(fh, byte_offset, data%idx, data%nelv, &
-           MPI_INTEGER, status, ierr)
+            & MPI_INTEGER, status, ierr)
+       ! cast element index
+       do i = 1, data%nelv
+          data%idx(i) = int(idx_i4(i), i8)
+       end do
+       deallocate(idx_i4)
 
-       mpi_offset = mpi_offset + int(data%glb_nelv, i8) * &
-            & int(MPI_INTEGER_SIZE, i8)
+       mpi_offset = mpi_offset + data%glb_nelv * int(MPI_INTEGER_SIZE, i8)
 
        if (read_mesh) then
-          byte_offset = mpi_offset + int(data%offset_el, i8) * &
-             (int(data%gdim*lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          byte_offset = mpi_offset + data%offset_el * &
+               & (int(data%gdim * lxyz, i8) * int(FLD_DATA_SIZE, i8))
           call fld_file_read_vector_field(this, fh, byte_offset, data%x, &
                & data%y, data%z, data)
-          mpi_offset = mpi_offset + int(data%glb_nelv, i8) * &
-             (int(data%gdim *lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          mpi_offset = mpi_offset + data%glb_nelv * &
+               & (int(data%gdim * lxyz, i8) * int(FLD_DATA_SIZE, i8))
        end if
 
        if (read_velocity) then
-          byte_offset = mpi_offset + int(data%offset_el, i8) * &
-             (int(data%gdim*lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          byte_offset = mpi_offset + data%offset_el * &
+               & (int(data%gdim*lxyz, i8) * int(FLD_DATA_SIZE, i8))
           call fld_file_read_vector_field(this, fh, byte_offset, data%u, &
                & data%v, data%w, data)
-          mpi_offset = mpi_offset + int(data%glb_nelv, i8) * &
-             (int(data%gdim *lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          mpi_offset = mpi_offset + data%glb_nelv * &
+               & (int(data%gdim * lxyz, i8) * int(FLD_DATA_SIZE, i8))
        end if
 
        if (read_pressure) then
-          byte_offset = mpi_offset + int(data%offset_el, i8) * &
-             (int(lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          byte_offset = mpi_offset + data%offset_el * (int(lxyz, i8) * &
+               & int(FLD_DATA_SIZE, i8))
           call fld_file_read_field(this, fh, byte_offset, data%p, data)
-          mpi_offset = mpi_offset + int(data%glb_nelv, i8) * &
-             (int(lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          mpi_offset = mpi_offset + data%glb_nelv * (int(lxyz, i8) * &
+               & int(FLD_DATA_SIZE, i8))
        end if
 
        if (read_temp) then
-          byte_offset = mpi_offset + int(data%offset_el, i8) * &
-             (int(lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          byte_offset = mpi_offset + data%offset_el * (int(lxyz, i8) * &
+               & int(FLD_DATA_SIZE, i8))
           call fld_file_read_field(this, fh, byte_offset, data%t, data)
-          mpi_offset = mpi_offset + int(data%glb_nelv, i8) * &
-             (int(lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          mpi_offset = mpi_offset + data%glb_nelv * (int(lxyz, i8) * &
+               & int(FLD_DATA_SIZE, i8))
        end if
 
        do i = 1, n_scalars
-          byte_offset = mpi_offset + int(data%offset_el, i8) * &
-             (int(lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          byte_offset = mpi_offset + data%offset_el * (int(lxyz, i8) * &
+               & int(FLD_DATA_SIZE, i8))
           call fld_file_read_field(this, fh, byte_offset, data%s(i), data)
-          mpi_offset = mpi_offset + int(data%glb_nelv, i8) * &
-             (int(lxyz, i8) * &
-              int(FLD_DATA_SIZE, i8))
+          mpi_offset = mpi_offset + data%glb_nelv * (int(lxyz, i8) * &
+               & int(FLD_DATA_SIZE, i8))
        end do
 
        this%counter = this%counter + 1
@@ -900,7 +875,7 @@ contains
     integer :: n, ierr, lxyz, i
 
     n = x%n
-    lxyz = fld_data%lx*fld_data%ly*fld_data%lz
+    lxyz = fld_data%lx * fld_data%ly * fld_data%lz
 
     if (this%dp_precision) then
        call MPI_File_read_at_all(fh, byte_offset, tmp_dp, n, &
@@ -919,7 +894,6 @@ contains
           x%x(i) = tmp_sp(i)
        end do
     end if
-
 
   end subroutine fld_file_read_field
 

@@ -11,7 +11,7 @@ module dofmap_parallel
   use device
   use comm, only : NEKO_COMM, pe_rank, pe_size
   implicit none
-  
+
 contains
 
   @test(npes=[1])
@@ -32,33 +32,33 @@ contains
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0)
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0)
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0)
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0)
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0)
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0)
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0)
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0)
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0)
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0)
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0)
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0)
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
     call m%init(gdim, dist)
 
@@ -78,7 +78,7 @@ contains
 
     @assertEqual(d%x(1,1,1,2), p(4)%x(1), tolerance=1d-14)
     @assertEqual(d%x(2,1,1,2), p(5)%x(1), tolerance=1d-14)
-    
+
   end subroutine test_dofmap_genxyz
 
   @test(npes=[1])
@@ -92,41 +92,41 @@ contains
     integer :: ierr, i,j, lx, i2, j2
     integer, parameter :: gdim = 3
     lx = 5
-    
+
     call device_init
-    
+
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0)
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0)
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0)
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0)
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0)
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0)
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0)
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0)
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0)
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0)
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0)
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0)
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
     call m%init(gdim, dist)
     Call Xh%init(GLL, lx,lx,lx)
@@ -136,8 +136,8 @@ contains
 
     call m%add_element(2, p(2), p(9), p(3), p(10), &
          p(6), p(11), p(7), p(12))
-    
-    call m%generate_conn() 
+
+    call m%generate_conn()
     d = dofmap_t(m, Xh)
     do i = 1,lx
       do j = 1,lx
@@ -150,7 +150,7 @@ contains
          enddo
         enddo
       enddo
-    enddo 
+    enddo
 
   end subroutine test_dofmap_face12
 
@@ -166,41 +166,41 @@ contains
     integer :: ierr, i,j, lx, i2, j2
     integer, parameter :: gdim = 3
     lx = 5
-    
+
     call device_init
-    
+
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0)
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0)
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0)
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0)
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0)
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0)
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0)
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0)
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0)
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0)
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0)
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0)
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
     call m%init(gdim, dist)
     Call Xh%init(GLL, lx,lx,lx)
@@ -224,7 +224,7 @@ contains
          enddo
         enddo
       enddo
-    enddo 
+    enddo
 
   end subroutine test_dofmap_face15
 
@@ -239,41 +239,41 @@ contains
     integer :: ierr, i,j, lx, j2, i2
     integer, parameter :: gdim = 3
     lx = 5
-    
+
     call device_init
-    
+
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0)
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0)
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0)
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0)
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0)
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0)
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0)
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0)
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0)
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0)
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0)
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0)
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
     call m%init(gdim, dist)
     Call Xh%init(GLL, lx,lx,lx)
@@ -296,7 +296,7 @@ contains
          enddo
         enddo
       enddo
-    enddo 
+    enddo
 
   end subroutine test_dofmap_face11
 
@@ -311,41 +311,41 @@ contains
     integer :: ierr, i,j, lx, i2, j2
     integer, parameter :: gdim = 3
     lx = 5
-    
+
     call device_init
-    
+
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0)
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0)
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0)
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0)
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0)
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0)
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0)
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0)
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0)
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0)
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0)
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0)
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
     call m%init(gdim, dist)
     Call Xh%init(GLL, lx,lx,lx)
@@ -369,7 +369,7 @@ contains
          enddo
         enddo
       enddo
-    enddo 
+    enddo
 
   end subroutine test_dofmap_face11rot
 
@@ -384,41 +384,41 @@ contains
     integer :: ierr, i,j, lx, i2, j2
     integer, parameter :: gdim = 3
     lx = 5
-    
+
     call device_init
-    
+
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0)
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0)
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0)
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0)
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0)
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0)
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0)
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0)
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0)
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0)
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0)
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0)
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
     call m%init(gdim, dist)
     Call Xh%init(GLL, lx,lx,lx)
@@ -443,7 +443,7 @@ contains
          enddo
         enddo
       enddo
-    enddo 
+    enddo
 
   end subroutine test_dofmap_face16
 
@@ -458,41 +458,41 @@ contains
     integer :: ierr, i,j, lx, i2, j2
     integer, parameter :: gdim = 3
     lx = 5
-    
+
     call device_init
-    
+
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0)
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0)
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0)
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0)
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0)
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0)
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0)
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0)
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0)
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0)
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0)
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0)
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
     call m%init(gdim, dist)
     Call Xh%init(GLL, lx,lx,lx)
@@ -516,7 +516,7 @@ contains
          enddo
         enddo
       enddo
-    enddo 
+    enddo
 
   end subroutine test_dofmap_face13
 
@@ -531,41 +531,41 @@ contains
     integer :: ierr, i,j, lx, i2,j2
     integer, parameter :: gdim = 3
     lx = 5
-    
+
     call device_init
-    
+
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0)
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0)
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0)
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0)
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0)
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0)
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0)
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0)
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0)
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0)
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0)
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0)
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
     call m%init(gdim, dist)
     Call Xh%init(GLL, lx,lx,lx)
@@ -589,7 +589,7 @@ contains
          enddo
         enddo
       enddo
-    enddo 
+    enddo
 
   end subroutine test_dofmap_face14
 
@@ -597,5 +597,5 @@ contains
 
 
 
-  
+
 end module dofmap_parallel

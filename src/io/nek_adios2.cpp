@@ -18,8 +18,8 @@ int reader_count;
 extern "C" void adios2_initialize_(
     const int *lxyz,
     const int *nelv,
-    const int *offset_el,
-    const int *glb_nelv,
+    const int64_t *offset_el,
+    const int64_t *glb_nelv,
     const int *gdim,
     const int *comm_int
 ){
@@ -38,16 +38,16 @@ extern "C" void adios2_initialize_(
     start *= static_cast<unsigned int>(*lxyz);
     // n is count, i.e number of entries in the array in my rank
     unsigned int n = static_cast<unsigned int> (*lxyz) * nel;
-    // gn is the total size of the arrays, not per io rank 
+    // gn is the total size of the arrays, not per io rank
     unsigned int gn = static_cast<unsigned int>((*glb_nelv)*(*lxyz));
- 
+
     // Assign to global variables
     reader_start = start;
     reader_count = n;
 
     // If the process is asynchronous, define the relevant variables for writer_st
     f2py_field = io_asynchronous.DefineVariable<double>("f2py_field", {gn}, {start}, {n});
-    
+
     // If asyncrhonous execution, open the global array
     std::cout << "create global array" << std::endl;
     writer_st = io_asynchronous.Open("globalArray_f2py", adios2::Mode::Write);

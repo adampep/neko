@@ -17,7 +17,8 @@ contains
   subroutine test_mesh_init_nelv(this)
     class (MpiTestMethod), intent(inout) :: this
     type(mesh_t) :: m
-    integer :: ierr, gdim, nelv, expected
+    integer :: ierr, gdim, nelv
+    integer(i8) :: expected
 
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
@@ -49,7 +50,7 @@ contains
 
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
-    dist = linear_dist_t(42, this%getProcessRank(), &
+    dist = linear_dist_t(42_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     do gdim = 2, 3
@@ -74,7 +75,7 @@ contains
     type(mesh_t) :: m
     type(linear_dist_t) :: dist
     type(point_t) :: p(6)
-    type(tuple_i4_t) :: t
+    type(tuple_i8_t) :: t
     integer :: ierr, i
     integer, parameter :: gdim = 2
 
@@ -83,21 +84,21 @@ contains
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0) !e1 p1
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0) !e1 p2
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0) !e1 p3
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0) !e1 p4
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0) !e2 p2
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0) !e2 p4
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
 
     call m%init(gdim, dist)
     if (this%getNumProcesses() .eq. 1) then
@@ -124,7 +125,7 @@ contains
        @assertEqual(t%x(1), p(5)%id())
        @assertEqual(t%x(2), p(6)%id())
 
-    else   
+    else
        if (this%getProcessRank() .eq. 0) then
 
           call m%add_element(1, p(1), p(2), p(3), p(4))
@@ -164,39 +165,39 @@ contains
     type(mesh_t) :: m
     type(linear_dist_t) :: dist
     type(point_t) :: p(12)
-    type(tuple4_i4_t) :: t
+    type(tuple4_i8_t) :: t
     integer :: ierr, i
     integer, parameter :: gdim = 3
 
     call MPI_Comm_dup(this%getMpiCommunicator(), NEKO_COMM%mpi_val, ierr)
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0) !e1 p1
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0) !e1 p2
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0) !e1 p3
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0) !e1 p4
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0) !e2 p2
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0) !e2 p4
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0) !e1 p5
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0) !e1 p6
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0) !e1 p8
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0) !e1 p7
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0) !e2 p6
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0) !e2 p8
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
 
     call m%init(gdim, dist)
@@ -235,7 +236,7 @@ contains
        @assertEqual(t%x(3), p(11)%id())
        @assertEqual(t%x(4), p(12)%id())
 
-    else   
+    else
        if (this%getProcessRank() .eq. 0) then
 
           call m%add_element(1, p(1), p(2), p(3), p(4), &
@@ -272,7 +273,7 @@ contains
           @assertEqual(t%x(1), p(5)%id())
           @assertEqual(t%x(2), p(6)%id())
           @assertEqual(t%x(3), p(11)%id())
-          @assertEqual(t%x(4), p(12)%id())          
+          @assertEqual(t%x(4), p(12)%id())
        end if
     end if
 
@@ -284,7 +285,7 @@ contains
     type(mesh_t) :: m
     type(linear_dist_t) :: dist
     type(point_t) :: p(6)
-    type(tuple_i4_t) :: t
+    type(tuple_i8_t) :: t
     integer :: ierr, i, p_local_idx
     integer, parameter :: gdim = 2
 
@@ -293,21 +294,21 @@ contains
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0) !e1 p1
-    call p(1)%set_id(1)
-    p(2) = point_t(1d0, 0d0, 0d0) !e1 p2 
-    call p(2)%set_id(2)
-    p(3) = point_t(0d0, 1d0, 0d0) !e1 p3 
-    call p(3)%set_id(4)
+    call p(1)%set_id(1_i8)
+    p(2) = point_t(1d0, 0d0, 0d0) !e1 p2
+    call p(2)%set_id(2_i8)
+    p(3) = point_t(0d0, 1d0, 0d0) !e1 p3
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0) !e1 p4
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0) !e2 p2
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0) !e2 p4
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
 
     call m%init(gdim, dist)
     if (this%getNumProcesses() .eq. 1) then
@@ -321,18 +322,18 @@ contains
        @assertEqual(7, m%hte%num_entries())
 
 
-       p_local_idx = m%get_local(m%points(p(1)%id()))
+       p_local_idx = m%get_local(m%points(int(p(1)%id(), i4)))
        @assertEqual(1, m%point_neigh(p_local_idx)%size())
-       p_local_idx = m%get_local(m%points(p(4)%id()))
+       p_local_idx = m%get_local(m%points(int(p(4)%id(), i4)))
        @assertEqual(1, m%point_neigh(p_local_idx)%size())
-       p_local_idx = m%get_local(m%points(p(6)%id()))
+       p_local_idx = m%get_local(m%points(int(p(6)%id(), i4)))
        @assertEqual(1, m%point_neigh(p_local_idx)%size())
-       p_local_idx = m%get_local(m%points(p(5)%id()))
+       p_local_idx = m%get_local(m%points(int(p(5)%id(), i4)))
        @assertEqual(1, m%point_neigh(p_local_idx)%size())
 
-       p_local_idx = m%get_local(m%points(p(3)%id()))
+       p_local_idx = m%get_local(m%points(int(p(3)%id(), i4)))
        @assertEqual(2, m%point_neigh(p_local_idx)%size())
-       p_local_idx = m%get_local(m%points(p(2)%id()))
+       p_local_idx = m%get_local(m%points(int(p(2)%id(), i4)))
        @assertEqual(2, m%point_neigh(p_local_idx)%size())
 
        @assertEqual(0, m%facet_neigh(1, 1))
@@ -344,7 +345,7 @@ contains
        @assertEqual(0, m%facet_neigh(3, 2))
        @assertEqual(0, m%facet_neigh(4, 2))
 
-    else   
+    else
        if (this%getProcessRank() .eq. 0) then
 
           call m%add_element(1, p(1), p(2), p(3), p(4))
@@ -352,8 +353,7 @@ contains
           call m%generate_conn()
 
           @assertEqual(4, m%hte%num_entries())
-          @MPIassertEqual(2, m%glb_nelv)
-       
+          @MPIassertEqual(2_i8, m%glb_nelv)
 
           p_local_idx = m%get_local(p(1))
           @assertEqual(1, m%point_neigh(p_local_idx)%size())
@@ -368,7 +368,7 @@ contains
           @assertEqual(-2, m%facet_neigh(2, 1))
           @assertEqual(0, m%facet_neigh(3, 1))
           @assertEqual(0, m%facet_neigh(4, 1))
-       
+
        else
 
           call m%add_element(1, p(2), p(5), p(4), p(6))
@@ -376,8 +376,8 @@ contains
           call m%generate_conn()
 
           @assertEqual(4, m%hte%num_entries())
-          @MPIassertEqual(2, m%glb_nelv)
-          
+          @MPIassertEqual(2_i8, m%glb_nelv)
+
           p_local_idx = m%get_local(p(2))
           @assertEqual(2, m%point_neigh(p_local_idx)%size())
           p_local_idx = m%get_local(p(5))
@@ -391,7 +391,7 @@ contains
           @assertEqual(0, m%facet_neigh(2, 1))
           @assertEqual(0, m%facet_neigh(3, 1))
           @assertEqual(0, m%facet_neigh(4, 1))
-          
+
        end if
     end if
 
@@ -403,7 +403,7 @@ contains
     type(mesh_t) :: m
     type(linear_dist_t) :: dist
     type(point_t) :: p(12)
-    type(tuple4_i4_t) :: t
+    type(tuple4_i8_t) :: t
     integer :: ierr, i, p_local_idx
     integer, parameter :: gdim = 3
 
@@ -412,33 +412,33 @@ contains
     pe_rank = this%getProcessRank()
     pe_size = this%getNumProcesses()
 
-    dist = linear_dist_t(2, this%getProcessRank(), &
+    dist = linear_dist_t(2_i8, this%getProcessRank(), &
          this%getNumProcesses(), NEKO_COMM)
 
     p(1) = point_t(0d0, 0d0, 0d0)
-    call p(1)%set_id(1)
+    call p(1)%set_id(1_i8)
     p(2) = point_t(1d0, 0d0, 0d0)
-    call p(2)%set_id(2)
+    call p(2)%set_id(2_i8)
     p(3) = point_t(0d0, 1d0, 0d0)
-    call p(3)%set_id(4)
+    call p(3)%set_id(4_i8)
     p(4) = point_t(1d0, 1d0, 0d0)
-    call p(4)%set_id(3)
+    call p(4)%set_id(3_i8)
     p(5) = point_t(2d0, 0d0, 0d0)
-    call p(5)%set_id(5)
+    call p(5)%set_id(5_i8)
     p(6) = point_t(2d0, 1d0, 0d0)
-    call p(6)%set_id(6)
+    call p(6)%set_id(6_i8)
     p(7) = point_t(0d0, 0d0, 1d0)
-    call p(7)%set_id(7)
+    call p(7)%set_id(7_i8)
     p(8) = point_t(1d0, 0d0, 1d0)
-    call p(8)%set_id(8)
+    call p(8)%set_id(8_i8)
     p(9) = point_t(1d0, 1d0, 1d0)
-    call p(9)%set_id(9)
+    call p(9)%set_id(9_i8)
     p(10) = point_t(0d0, 1d0, 1d0)
-    call p(10)%set_id(10)
+    call p(10)%set_id(10_i8)
     p(11) = point_t(2d0, 0d0, 1d0)
-    call p(11)%set_id(11)
+    call p(11)%set_id(11_i8)
     p(12) = point_t(2d0, 1d0, 1d0)
-    call p(12)%set_id(12)
+    call p(12)%set_id(12_i8)
 
 
     call m%init(gdim, dist)
@@ -452,10 +452,10 @@ contains
             p(8), p(11), p(9), p(12))
 
        call m%generate_conn()
-       @MPIassertEqual(2, m%glb_nelv)
-       @MPIassertEqual(11, m%glb_mfcs)
-       @MPIassertEqual(20, m%glb_meds)
-       
+       @MPIassertEqual(2_i8, m%glb_nelv)
+       @MPIassertEqual(11_i8, m%glb_mfcs)
+       @MPIassertEqual(20_i8, m%glb_meds)
+
        p_local_idx = m%get_local(p(1))
        @assertEqual(1, m%point_neigh(p_local_idx)%size())
        p_local_idx = m%get_local(p(2))
@@ -516,9 +516,8 @@ contains
        @assertFalse(m%is_shared(t))
        call m%elements(2)%e%facet_id(t, 2)
        @assertFalse(m%is_shared(t))
-       
-       
-    else   
+
+    else
        if (this%getProcessRank() .eq. 0) then
 
           call m%add_element(1, p(1), p(2), p(3), p(4), &
@@ -527,10 +526,10 @@ contains
           call m%generate_conn()
 
           @assertEqual(6, m%htf%num_entries())
-          @MPIassertEqual(2, m%glb_nelv)
-          @MPIassertEqual(11, m%glb_mfcs)
-          @MPIassertEqual(20, m%glb_meds)
-          
+          @MPIassertEqual(2_i8, m%glb_nelv)
+          @MPIassertEqual(11_i8, m%glb_mfcs)
+          @MPIassertEqual(20_i8, m%glb_meds)
+
           p_local_idx = m%get_local(p(1))
           @assertEqual(1, m%point_neigh(p_local_idx)%size())
           p_local_idx = m%get_local(p(2))
@@ -569,10 +568,10 @@ contains
           call m%generate_conn()
 
           @assertEqual(6, m%htf%num_entries())
-          @MPIassertEqual(2, m%glb_nelv)
-          @MPIassertEqual(11, m%glb_mfcs)
-          @MPIassertEqual(20, m%glb_meds)
-                    
+          @MPIassertEqual(2_i8, m%glb_nelv)
+          @MPIassertEqual(11_i8, m%glb_mfcs)
+          @MPIassertEqual(20_i8, m%glb_meds)
+
           p_local_idx = m%get_local(p(2))
           @assertEqual(2, m%point_neigh(p_local_idx)%size())
           p_local_idx = m%get_local(p(5))

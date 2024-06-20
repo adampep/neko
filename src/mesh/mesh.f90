@@ -69,13 +69,13 @@ module mesh
      integer :: mfcs            !< Number of (unique) faces in the mesh
      integer :: meds            !< Number of (unique) edges in the mesh
 
-     integer :: glb_nelv        !< Global number of elements
-     integer :: glb_mpts        !< Global number of unique points
-     integer :: glb_mfcs        !< Global number of unique faces
-     integer :: glb_meds        !< Global number of unique edges
+     integer(i8) :: glb_nelv        !< Global number of elements
+     integer(i8) :: glb_mpts        !< Global number of unique points
+     integer(i8) :: glb_mfcs        !< Global number of unique faces
+     integer(i8) :: glb_meds        !< Global number of unique edges
 
-     integer :: offset_el       !< Element offset
-     integer :: max_pts_id      !< Max local point id
+     integer(i8) :: offset_el       !< Element offset
+     integer(i8) :: max_pts_id      !< Max local point id
 
      type(point_t), allocatable :: points(:) !< list of points
      type(mesh_element_t), allocatable :: elements(:) !< List of elements
@@ -186,6 +186,7 @@ contains
     integer, intent(in) :: gdim          !< Geometric dimension
     integer, intent(in) :: nelv          !< Local number of elements
     integer :: ierr
+    integer(i8) :: itmp
     character(len=LOG_SIZE) :: log_buf
 
     call this%free()
@@ -198,12 +199,14 @@ contains
        call neko_warning(log_buf)
     end if
 
-    call MPI_Allreduce(this%nelv, this%glb_nelv, 1, &
-         MPI_INTEGER, MPI_SUM, NEKO_COMM, ierr)
+    itmp = this%nelv
+    call MPI_Allreduce(itmp, this%glb_nelv, 1, &
+         MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
 
     this%offset_el = 0
-    call MPI_Exscan(this%nelv, this%offset_el, 1, &
-         MPI_INTEGER, MPI_SUM, NEKO_COMM, ierr)
+    itmp = this%nelv
+    call MPI_Exscan(itmp, this%offset_el, 1, &
+         MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
 
     call mesh_init_common(this)
 
@@ -940,7 +943,7 @@ contains
     ! Determine/ constants used to generate unique global edge numbers
     ! for shared edges
     !
-    C = int(this%glb_nelv, i8) * int(NEKO_HEX_NEDS, i8)
+    C = this%glb_nelv * int(NEKO_HEX_NEDS, i8)
 
     num_edge_glb = 2* this%meds
     call MPI_Allreduce(MPI_IN_PLACE, num_edge_glb, 1, &

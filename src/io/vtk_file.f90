@@ -352,7 +352,7 @@ contains
     j = 0
     do i = 1, tri_msh%nelv
        write(unit, fmt='(I8,8I8)') npts, &
-            (tri_msh%el(i)%pts(j)%p%id() - 1, j=1, npts)
+            (ind(tri_msh%el(i)%pts(j)%p%id(), i4) - 1, j=1, npts)
     end do
 
     ! Dump cell type for each element

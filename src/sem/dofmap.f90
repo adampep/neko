@@ -212,7 +212,7 @@ contains
           ix = mod(jl - 1, 2)     * (Xh%lx - 1) + 1
           iy = (mod(jl - 1, 4)/2) * (Xh%ly - 1) + 1
           iz = ((jl - 1)/4)       * (Xh%lz - 1) + 1
-          this%dof(ix, iy, iz, il) = int(msh%elements(il)%e%pts(jl)%p%id(), i8)
+          this%dof(ix, iy, iz, il) = msh%elements(il)%e%pts(jl)%p%id()
           this%shared_dof(ix, iy, iz, il) = &
                msh%is_shared(msh%elements(il)%e%pts(jl)%p)
        end do
@@ -238,7 +238,7 @@ contains
     num_dofs_edges(1) =  int(Xh%lx - 2, i8)
     num_dofs_edges(2) =  int(Xh%ly - 2, i8)
     num_dofs_edges(3) =  int(Xh%lz - 2, i8)
-    edge_offset = int(msh%glb_mpts, i8) + int(1, 4)
+    edge_offset = msh%glb_mpts + int(1, 4)
 
     do i = 1, msh%nelv
 
@@ -475,8 +475,7 @@ contains
     Xh => this%Xh
 
     !> @todo don't assume lx = ly = lz
-    facet_offset = int(msh%glb_mpts, i8) + &
-         int(msh%glb_meds, i8) * int(Xh%lx-2, i8) + int(1, i8)
+    facet_offset = msh%glb_mpts + msh%glb_meds * int(Xh%lx-2, i8) + int(1, i8)
 
     ! Number of dofs on an face excluding end-points
     num_dofs_faces(1) =  int((Xh%ly - 2) * (Xh%lz - 2), i8)

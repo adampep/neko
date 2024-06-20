@@ -32,10 +32,10 @@
 !
 !> Implements type data_streamer_t.
 module data_streamer
-  use num_types, only: rp, c_rp
+  use num_types, only: rp, c_rp, i8
   use field, only: field_t
   use coefs, only: coef_t
-  use utils, only: neko_warning
+  use utils, only: neko_warning, neko_error
   use device
   use comm
   use neko_mpi_types
@@ -81,7 +81,8 @@ contains
   subroutine data_streamer_init(this, coef)
     class(data_streamer_t), intent(inout) :: this
     type(coef_t), intent(inout) :: coef
-    integer :: nelb, nelv, nelgv, npts, gdim
+    integer :: nelv, npts, gdim
+    integer(i8) :: nelb, nelgv
 
     !Assign the set up parameters
     nelv  = coef%msh%nelv
@@ -89,6 +90,10 @@ contains
     nelgv = coef%msh%glb_nelv
     nelb  = coef%msh%offset_el
     gdim = coef%msh%gdim
+
+    ! For now streaming supports msh%glb_nelv bounded by integer4
+    if (nelgv > huge(nelv)) &
+         & call neko_error('Streaming does not support int8 for element count')
 
 #ifdef HAVE_ADIOS2
     call fortran_adios2_initialize(npts, nelv, nelb, nelgv, gdim, NEKO_COMM)
@@ -113,7 +118,7 @@ contains
 #endif
 
   end subroutine data_streamer_free
-   
+
   !> streamer
   !! @param fld array of shape field%x
   subroutine data_streamer_stream(this, fld)
@@ -128,7 +133,7 @@ contains
 #endif
 
   end subroutine data_streamer_stream
-  
+
   !> reciever
   !! @param fld array of shape field%x
   subroutine data_streamer_recieve(this, fld)
@@ -159,7 +164,8 @@ contains
   subroutine fortran_adios2_initialize(npts, nelv, nelb, nelgv, gdim, comm)
     use, intrinsic :: ISO_C_BINDING
     implicit none
-    integer, intent(in) :: npts, nelv, nelb, nelgv, gdim
+    integer, intent(in) :: npts, nelv, gdim
+    integer(i8), intent(in) :: nelb, nelgv
     type(MPI_COMM) :: comm
 
     interface
@@ -175,8 +181,8 @@ contains
          implicit none
          integer(kind=C_INT) :: npts
          integer(kind=C_INT) :: nelv
-         integer(kind=C_INT) :: nelb
-         integer(kind=C_INT) :: nelgv
+         integer(kind=C_INT64_T) :: nelb
+         integer(kind=C_INT64_T) :: nelgv
          integer(kind=C_INT) :: gdim
          type(*) :: comm
        end subroutine c_adios2_initialize
@@ -201,7 +207,7 @@ contains
 
     call c_adios2_finalize()
   end subroutine fortran_adios2_finalize
-  
+
   !> Interface to adios2_stream in c++.
   !! @details This routine communicates the data to a global array that
   !! is accessed by a data processor. The operations do not write to disk.
@@ -225,7 +231,7 @@ contains
 
     call c_adios2_stream(fld)
   end subroutine fortran_adios2_stream
-  
+
   !> Interface to adios2_recieve in ci++.
   !! @details This routine communicates the data to a global array that
   !! is accessed by a data processor. The operations do not write to disk.

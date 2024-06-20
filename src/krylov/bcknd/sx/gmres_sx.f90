@@ -174,7 +174,8 @@ contains
   end subroutine sx_gmres_free
 
   !> Standard PCG solve
-  function sx_gmres_solve(this, Ax, x, f, n, coef, blst, gs_h, niter) result(ksp_results)
+  function sx_gmres_solve(this, Ax, x, f, n, coef, blst, gs_h, niter) &
+       & result(ksp_results)
     class(sx_gmres_t), intent(inout) :: this
     class(ax_t), intent(inout) :: Ax
     type(field_t), intent(inout) :: x
@@ -196,7 +197,9 @@ contains
 
     conv = .false.
     iter = 0
-    glb_n = n / x%msh%nelv * x%msh%glb_nelv
+    ! Adam Peplinski; x%msh%glb_nelv changed to i8, but glb_n does not seem to
+    ! be used, so I just comment following line without playing with kind
+    !glb_n = n / x%msh%nelv * x%msh%glb_nelv
 
     if (present(niter)) then
        max_iter = niter

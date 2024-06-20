@@ -45,7 +45,8 @@ module chkp_file
   use mesh
   use math
   use interpolation
-  use neko_mpi_types
+  use neko_mpi_types, only : MPI_INTEGER_SIZE, MPI_INTEGER8_SIZE, &
+       & MPI_DOUBLE_PRECISION_SIZE, MPI_REAL_PREC_SIZE
   use comm
   use global_interpolation
   implicit none
@@ -90,7 +91,8 @@ contains
     type(MPI_File) :: fh
     integer (kind=MPI_OFFSET_KIND) :: mpi_offset, byte_offset
     integer(kind=i8) :: n_glb_dofs, dof_offset
-    logical :: write_lag, write_scalar, write_dtlag, write_scalarlag, write_abvel
+    logical :: write_lag, write_scalar, write_dtlag, write_scalarlag, &
+         & write_abvel
     integer :: i
 
     if (present(t)) then
@@ -172,12 +174,12 @@ contains
     fname = trim(this%fname(1:suffix_pos-1))//id_str//'.chkp'
 
 
-    dof_offset = int(msh%offset_el, i8) * int(u%Xh%lx * u%Xh%ly * u%Xh%lz, i8)
-    n_glb_dofs = int(u%Xh%lx * u%Xh%ly * u%Xh%lz, i8) * int(msh%glb_nelv, i8)
+    dof_offset = msh%offset_el * int(u%Xh%lx * u%Xh%ly * u%Xh%lz, i8)
+    n_glb_dofs = int(u%Xh%lx * u%Xh%ly * u%Xh%lz, i8) * msh%glb_nelv
 
     call MPI_File_open(NEKO_COMM, trim(fname), &
          MPI_MODE_WRONLY + MPI_MODE_CREATE, MPI_INFO_NULL, fh, ierr)
-    call MPI_File_write_all(fh, msh%glb_nelv, 1, MPI_INTEGER, status, ierr)
+    call MPI_File_write_all(fh, msh%glb_nelv, 1, MPI_INTEGER8, status, ierr)
     call MPI_File_write_all(fh, msh%gdim, 1, MPI_INTEGER, status, ierr)
     call MPI_File_write_all(fh, u%Xh%lx, 1, MPI_INTEGER, status, ierr)
     call MPI_File_write_all(fh, optional_fields, 1, MPI_INTEGER, status, ierr)
@@ -188,12 +190,14 @@ contains
     ! Dump mandatory checkpoint data
     !
 
-    byte_offset = 4_i8 * int(MPI_INTEGER_SIZE,i8) + int(MPI_DOUBLE_PRECISION_SIZE,i8)
+    byte_offset = int(MPI_INTEGER8_SIZE, i8) + 3_i8 * &
+         & int(MPI_INTEGER_SIZE, i8) + int(MPI_DOUBLE_PRECISION_SIZE, i8)
     byte_offset = byte_offset + &
          dof_offset * int(MPI_REAL_PREC_SIZE, i8)
     call MPI_File_write_at_all(fh, byte_offset,u%x, u%dof%size(), &
          MPI_REAL_PRECISION, status, ierr)
-    mpi_offset = 4_i8 * int(MPI_INTEGER_SIZE,i8) + int(MPI_DOUBLE_PRECISION_SIZE,i8)
+    mpi_offset = 4_i8 * int(MPI_INTEGER_SIZE, i8) + &
+         & int(MPI_DOUBLE_PRECISION_SIZE, i8)
     mpi_offset = mpi_offset +&
          n_glb_dofs * int(MPI_REAL_PREC_SIZE, i8)
 
@@ -271,9 +275,11 @@ contains
     end if
 
     if (write_dtlag) then
-       call MPI_File_write_at_all(fh, mpi_offset, tlag, 10, MPI_REAL_PRECISION, status, ierr)
+       call MPI_File_write_at_all(fh, mpi_offset, tlag, 10, &
+            & MPI_REAL_PRECISION, status, ierr)
        mpi_offset = mpi_offset + 10_i8 * int(MPI_REAL_PREC_SIZE, i8)
-       call MPI_File_write_at_all(fh, mpi_offset, dtlag, 10, MPI_REAL_PRECISION, status, ierr)
+       call MPI_File_write_at_all(fh, mpi_offset, dtlag, 10, &
+            & MPI_REAL_PRECISION, status, ierr)
        mpi_offset = mpi_offset + 10_i8 * int(MPI_REAL_PREC_SIZE, i8)
     end if
 
@@ -367,15 +373,15 @@ contains
     real(kind=rp), allocatable :: z_coord(:,:,:,:)
     real(kind=rp), pointer :: dtlag(:), tlag(:)
     integer (kind=MPI_OFFSET_KIND) :: mpi_offset, byte_offset
-    integer(kind=i8) :: n_glb_dofs, dof_offset
-    integer :: glb_nelv, gdim, lx, have_lag, have_scalar, nel, optional_fields, have_dtlag
+    integer(kind=i8) :: glb_nelv, n_glb_dofs, dof_offset
+    integer :: gdim, lx, have_lag, have_scalar, nel, optional_fields, have_dtlag
     integer :: have_abvel, have_scalarlag
     logical :: read_lag, read_scalar, read_dtlag, read_abvel, read_scalarlag
     real(kind=rp) :: tol
     real(kind=rp) :: center_x, center_y, center_z
     integer :: i, e
     type(dofmap_t) :: dof
-   
+
     call this%check_exists()
 
     select type(data)
@@ -452,7 +458,7 @@ contains
 
     call MPI_File_open(NEKO_COMM, trim(this%fname), &
          MPI_MODE_RDONLY, MPI_INFO_NULL, fh, ierr)
-    call MPI_File_read_all(fh, glb_nelv, 1, MPI_INTEGER, status, ierr)
+    call MPI_File_read_all(fh, glb_nelv, 1, MPI_INTEGER8, status, ierr)
     call MPI_File_read_all(fh, gdim, 1, MPI_INTEGER, status, ierr)
     call MPI_File_read_all(fh, lx, 1, MPI_INTEGER, status, ierr)
     call MPI_File_read_all(fh, optional_fields, 1, MPI_INTEGER, status, ierr)
@@ -499,9 +505,12 @@ contains
           center_y = center_y/u%Xh%lxyz
           center_z = center_z/u%Xh%lxyz
           do i = 1,u%dof%Xh%lxyz
-             x_coord(i,1,1,e) = u%dof%x(i,1,1,e) - tol*(u%dof%x(i,1,1,e)-center_x)
-             y_coord(i,1,1,e) = u%dof%y(i,1,1,e) - tol*(u%dof%y(i,1,1,e)-center_y)
-             z_coord(i,1,1,e) = u%dof%z(i,1,1,e) - tol*(u%dof%z(i,1,1,e)-center_z)
+             x_coord(i,1,1,e) = u%dof%x(i,1,1,e) - tol * (u%dof%x(i,1,1,e) - &
+                  & center_x)
+             y_coord(i,1,1,e) = u%dof%y(i,1,1,e) - tol * (u%dof%y(i,1,1,e) - &
+                  & center_y)
+             z_coord(i,1,1,e) = u%dof%z(i,1,1,e) - tol * (u%dof%z(i,1,1,e) - &
+                  & center_z)
           end do
        end do
        call this%global_interp%init(dof,tol=tol)
@@ -512,18 +521,20 @@ contains
     else
        call this%space_interp%init(this%sim_Xh, this%chkp_Xh)
     end if
-    dof_offset = int(msh%offset_el, i8) * int(this%chkp_Xh%lxyz, i8)
-    n_glb_dofs = int(this%chkp_Xh%lxyz, i8) * int(msh%glb_nelv, i8)
+    dof_offset = msh%offset_el * int(this%chkp_Xh%lxyz, i8)
+    n_glb_dofs = int(this%chkp_Xh%lxyz, i8) * msh%glb_nelv
 
     !
     ! Read mandatory checkpoint data
     !
 
-    byte_offset = 4_i8 * int(MPI_INTEGER_SIZE,i8) + int(MPI_DOUBLE_PRECISION_SIZE,i8)
+    byte_offset = int(MPI_INTEGER8_SIZE, i8) + 3_i8 * &
+         & int(MPI_INTEGER_SIZE, i8) + int(MPI_DOUBLE_PRECISION_SIZE, i8)
     byte_offset = byte_offset + &
          dof_offset * int(MPI_REAL_PREC_SIZE, i8)
     call this%read_field(fh, byte_offset, u%x, nel)
-    mpi_offset = 4_i8 * int(MPI_INTEGER_SIZE,i8) + int(MPI_DOUBLE_PRECISION_SIZE,i8)
+    mpi_offset = 4_i8 * int(MPI_INTEGER_SIZE, i8) + &
+         & int(MPI_DOUBLE_PRECISION_SIZE, i8)
     mpi_offset = mpi_offset +&
          n_glb_dofs * int(MPI_REAL_PREC_SIZE, i8)
 
@@ -577,9 +588,11 @@ contains
     end if
 
     if (read_dtlag .and. have_dtlag .eq. 1) then
-       call MPI_File_read_at_all(fh, mpi_offset, tlag, 10, MPI_REAL_PRECISION, status, ierr)
+       call MPI_File_read_at_all(fh, mpi_offset, tlag, 10, MPI_REAL_PRECISION, &
+            & status, ierr)
        mpi_offset = mpi_offset + 10_i8 * int(MPI_REAL_PREC_SIZE, i8)
-       call MPI_File_read_at_all(fh, mpi_offset, dtlag, 10, MPI_REAL_PRECISION, status, ierr)
+       call MPI_File_read_at_all(fh, mpi_offset, dtlag, 10, &
+            & MPI_REAL_PRECISION, status, ierr)
        mpi_offset = mpi_offset + 10_i8 * int(MPI_REAL_PREC_SIZE, i8)
     end if
 

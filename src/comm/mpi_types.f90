@@ -61,6 +61,7 @@ module neko_mpi_types
   integer :: MPI_DOUBLE_PRECISION_SIZE !< Size of MPI type double precision
   integer :: MPI_CHARACTER_SIZE        !< Size of MPI type character
   integer :: MPI_INTEGER_SIZE          !< Size of MPI type integer
+  integer :: MPI_INTEGER8_SIZE         !< Size of MPI type integer8
   integer :: MPI_LOGICAL_SIZE          !< Size of MPI type logical
   integer :: MPI_REAL_PREC_SIZE        !< Size of working precision REAL types
 
@@ -72,7 +73,7 @@ module neko_mpi_types
        MPI_RE2V2_DATA_XYZ, MPI_RE2V2_DATA_XY, &
        MPI_RE2V2_DATA_CV, MPI_RE2V2_DATA_BC, &
        MPI_REAL_SIZE, MPI_DOUBLE_PRECISION_SIZE, &
-       MPI_CHARACTER_SIZE, MPI_INTEGER_SIZE, &
+       MPI_CHARACTER_SIZE, MPI_INTEGER_SIZE, MPI_INTEGER8_SIZE, &
        MPI_LOGICAL_SIZE, MPI_REAL_PREC_SIZE, &
        MPI_STL_HEADER, MPI_STL_TRIANGLE
 
@@ -104,6 +105,7 @@ contains
     call MPI_Type_size(MPI_DOUBLE_PRECISION, MPI_DOUBLE_PRECISION_SIZE, ierr)
     call MPI_Type_size(MPI_CHARACTER, MPI_CHARACTER_SIZE, ierr)
     call MPI_Type_size(MPI_INTEGER, MPI_INTEGER_SIZE, ierr)
+    call MPI_Type_size(MPI_INTEGER8, MPI_INTEGER8_SIZE, ierr)
     call MPI_Type_size(MPI_LOGICAL, MPI_LOGICAL_SIZE, ierr)
     call MPI_Type_size(MPI_REAL_PRECISION, MPI_REAL_PREC_SIZE, ierr)
 
