@@ -1,4 +1,3 @@
-
 ! Copyright (c) 2021-2022, The Neko Authors
 ! All rights reserved.
 !
@@ -31,65 +30,66 @@
 ! ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ! POSSIBILITY OF SUCH DAMAGE.
 !
-module les_model_fctry
-  use les_model, only : les_model_t
+module wall_model_fctry
+  use num_types, only : rp
+  use wall_model, only : wall_model_t
   use vreman, only : vreman_t
-  use smagorinsky, only : smagorinsky_t
-  use dynamic_smagorinsky, only : dynamic_smagorinsky_t
-  use sigma, only : sigma_t
   use dofmap, only : dofmap_t
   use coefs, only : coef_t
-  use utils, only : concat_string_array, neko_error
   use json_module, only : json_file
+  use spalding, only : spalding_t
+  use rough_log_law, only : rough_log_law_t
+  use utils, only : concat_string_array, neko_error
+  use json_utils, only : json_get
   implicit none
   private
 
-  public :: les_model_factory
+  public :: wall_model_factory
 
   ! List of all possible types created by the factory routine
-  character(len=20) :: KNOWN_TYPES(4) = [character(len=20) :: &
-     "vreman", &
-     "smagorinsky", &
-     "dymamic_smagorinsky", &
-     "sigma"]
+  character(len=20) :: KNOWN_TYPES(2) = [character(len=20) :: &
+     "spalding", &
+     "rough_log_law"]
 
 contains
-  !> LES model factory. Both constructs and initializes the object.
+
+  !> Wall model factory. Both constructs and initializes the object.
   !! @param object The object to be allocated.
-  !! @param type_name The name of the LES model.
-  !! @param dofmap SEM map of degrees of freedom.
   !! @param coef SEM coefficients.
+  !! @param msk The boundary mask.
+  !! @param facet The boundary facets.
+  !! @param nu The molecular kinematic viscosity.
+  !! @param h_index The off-wall index of the sampling cell.
   !! @param json A dictionary with parameters.
-  subroutine les_model_factory(object, type_name, dofmap, coef, json)
-    class(les_model_t), allocatable, target, intent(inout) :: object
-    character(len=*), intent(in) :: type_name
-    type(dofmap_t), intent(in) :: dofmap
+  subroutine wall_model_factory(object, coef, msk, facet, nu, h_index, json)
+    class(wall_model_t), allocatable, target, intent(inout) :: object
     type(coef_t), intent(in) :: coef
+    integer, intent(in) :: msk(:)
+    integer, intent(in) :: facet(:)
+    real(kind=rp), intent(in) :: nu
+    integer, intent(in) :: h_index
     type(json_file), intent(inout) :: json
+    character(len=:), allocatable :: type_name
     character(len=:), allocatable :: type_string
 
-    if (allocated(object)) then
-       deallocate(object)
-    else if (trim(type_name) .eq. 'vreman') then
-       allocate(vreman_t::object)
-    else if (trim(type_name) .eq. 'smagorinsky') then
-       allocate(smagorinsky_t::object)
-    else if (trim(type_name) .eq. 'dynamic_smagorinsky') then
-       allocate(dynamic_smagorinsky_t::object)
-    else if (trim(type_name) .eq. 'sigma') then
-       allocate(sigma_t::object)
-    else
-       type_string =  concat_string_array(KNOWN_TYPES, NEW_LINE('A') // "-  ", &
-                                          .true.)
-       call neko_error("Unknown LES model type: " &
-                       // trim(type_name) // ".  Known types are: " &
-                       // type_string)
-       stop
+    type_string =  concat_string_array(KNOWN_TYPES, NEW_LINE('A') // "-  ", &
+                                       prepend=.true.)
 
+    call json_get(json, "model", type_name)
+
+    if (trim(type_name) .eq. "spalding") then
+       allocate(spalding_t::object)
+    else if (trim(type_name) .eq. "rough_log_law") then
+       allocate(rough_log_law_t::object)
+    else
+       call neko_error("Unknown wall model type: " // trim(type_name) // &
+          trim(type_name) // ".  Known types are: "  // type_string)
+       stop
     end if
 
-   call object%init(dofmap, coef, json)
+    ! Initialize
+    call object%init(coef, msk, facet, nu, h_index, json)
 
-  end subroutine les_model_factory
+  end subroutine wall_model_factory
 
-end module les_model_fctry
+end module wall_model_fctry
