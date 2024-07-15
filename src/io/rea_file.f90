@@ -77,9 +77,9 @@ contains
     logical, allocatable :: curve_element(:)
     character(len=1) :: chtemp
     integer :: ndim, nparam, nskip, nlogic, ncurve
-    integer :: nelgs, nelgv, i, j, ierr, l
-    integer :: el_idx, pt_idx
-    integer(i8) :: itmp8, start_el, end_el
+    integer :: nelgs, nelgv_i4, i, j, ierr, l, start_el_i4, end_el_i4
+    integer :: el_idx
+    integer(i8) :: itmp8, nelgv, start_el, end_el, pt_idx
     logical :: read_param, read_bcs, read_map
     real(kind=dp) :: xc(8), yc(8), zc(8), curve(5)
     real(kind=dp), allocatable :: bc_data(:,:,:)
@@ -163,21 +163,22 @@ contains
     ! Read mesh info
     read(9, *)
     read(9, *)
-    read(9, *) nelgs,ndim, nelgv
+    ! Currently rea supports msh%glb_nelv bounded by integer4
+    read(9, *) nelgs, ndim, nelgv_i4
     if (nelgs .lt. 0) then
        re2_fname = trim(this%fname(1:scan(trim(this%fname), &
             '.', back=.true.)))//'re2'
        call re2_file%init(re2_fname)
        call re2_file%read(msh)
     else
-       write(log_buf,1) ndim, nelgv
+       write(log_buf,1) ndim, nelgv_i4
 1      format('gdim = ', i1, ', nelements =', i7)
        call neko_log%message(log_Buf)
 
        call filename_chsuffix(this%fname, map_fname, 'map')
        inquire(file=map_fname, exist=read_map)
        if (read_map) then
-          call map_init(nm, nelgv, 2**ndim)
+          call map_init(nm, nelgv_i4, 2**ndim)
           call map_file%init(map_fname)
           call map_file%read(nm)
        else
@@ -185,11 +186,13 @@ contains
        end if
 
        ! Use a load-balanced linear distribution
-       itmp8 = nelgv
-       dist = linear_dist_t(itmp8, pe_rank, pe_size, NEKO_COMM)
+       nelgv = int(nelgv_i4, i8)
+       dist = linear_dist_t(nelgv, pe_rank, pe_size, NEKO_COMM)
        nel = dist%num_local()
        start_el = dist%start_idx() + 1
        end_el = dist%end_idx() + 1
+       start_el_i4 = int(start_el, i4)
+       end_el_i4 = int(end_el, i4)
 
        call msh%init(ndim, dist)
 
@@ -197,12 +200,12 @@ contains
 
        el_idx = 1
        pt_idx = 0
-       do i = 1, nelgv
+       do i = 1, nelgv_i4
           read(9, *)
           if (ndim .eq. 2) then
              read(9, *) (xc(j),j=1,4)
              read(9, *) (yc(j),j=1,4)
-             if (i .ge. start_el .and. i .le. end_el) then
+             if (i .ge. start_el_i4 .and. i .le. end_el_i4) then
                 do j = 1, 4
                    p(j) = point_t(real(xc(j),dp), real(yc(j),dp),real(0d0,dp))
                    call rea_file_add_point(htp, p(j), pt_idx)
@@ -227,19 +230,20 @@ contains
                      p(1), p(2), p(4), p(3), p(5), p(6), p(8), p(7))
              end if
           end if
-          if (i .ge. start_el .and. i .le. end_el) then
+          if (i .ge. start_el_i4 .and. i .le. end_el_i4) then
              el_idx = el_idx + 1
           end if
        end do
 
        call htp%free()
 
+       ! this part may be executed on a single mpi rank only
        read(9, *)
        read(9, *) ncurve
-       allocate(curve_data(5,8,nelgv))
-       allocate(curve_element(nelgv))
-       allocate(curve_type(8,nelgv))
-       do i = 1, nelgv
+       allocate(curve_data(5,8,nelgv_i4))
+       allocate(curve_element(nelgv_i4))
+       allocate(curve_type(8,nelgv_i4))
+       do i = 1, nelgv_i4
           curve_element(i) = .false.
           do j = 1, 8
              curve_type(j,i) = 0
@@ -270,7 +274,7 @@ contains
        if (curve_skip) then
           call neko_log%warning('Curve type: s, e are not supported, treating mesh as non-curved.')
        else
-          do el_idx = 1, nelgv
+          do el_idx = 1, nelgv_i4
              if (curve_element(el_idx)) then
                 call msh%mark_curve_element(el_idx, &
                      curve_data(1,1,el_idx), curve_type(1,el_idx))
@@ -281,19 +285,20 @@ contains
        deallocate(curve_element)
        deallocate(curve_type)
 
+       ! this part may be executed on a single mpi rank only
        ! Read fluid boundary conditions
        read(9,*)
        read(9,*)
        if (.not. read_bcs) then ! Mark zones in the mesh
           call neko_log%message("Reading boundary conditions", neko_log_debug)
-          allocate(cbc(6,nelgv))
-          allocate(bc_data(6,2*ndim,nelgv))
+          allocate(cbc(6,nelgv_i4))
+          allocate(bc_data(6,2*ndim,nelgv_i4))
           off = 0
           !Fix for different horrible .rea periodic bc formats.
-          if (nelgv .lt. 1000) off = 1
-          do i = 1, nelgv
-             if (i .ge. start_el .and. i .le. end_el) then
-                el_idx = i - start_el + 1
+          if (nelgv_i4 .lt. 1000) off = 1
+          do i = 1, nelgv_i4
+             if (i .ge. start_el_i4 .and. i .le. end_el_i4) then
+                el_idx = i - start_el_i4 + 1
                 do j = 1, 2*ndim
                    read(9, *) cbc(j, i), (bc_data(l,j,i),l=1,6)
                    sym_facet = facet_map(j)
@@ -373,57 +378,69 @@ contains
 
                       labeled_zone_offsets(NEKO_SHL_BC_LABEL) = 1
                    case ('P')
+                      
+                      ! THIS NOT DONE YET
                       p_el_idx = int(bc_data(2+off,j,i))
                       p_facet = facet_map(int(bc_data(3+off,j,i)))
                       call msh%get_facet_ids(sym_facet, el_idx, pids)
                       call msh%mark_periodic_facet(sym_facet, el_idx, &
                            p_facet, p_el_idx, pids)
+                      
                    end select
                 end do
              end if
           end do
 
-          do i = 1, nelgv
-             if (i .ge. start_el .and. i .le. end_el) then
-                el_idx = i - start_el + 1
+          do i = 1, nelgv_i4
+             if (i .ge. start_el_i4 .and. i .le. end_el_i4) then
+                el_idx = i - start_el_i4 + 1
                 do j = 1, 2*ndim
                    sym_facet = facet_map(j)
                    select case(trim(cbc(j,i)))
                    case ('P')
+                      
+                      ! THIS NOT DONE YET
                       p_el_idx = int(bc_data(2+off,j,i))
                       p_facet = facet_map(int(bc_data(3+off,j,i)))
                       call msh%create_periodic_ids(sym_facet, el_idx, &
                            p_facet, p_el_idx)
+                      
                    end select
                 end do
              end if
           end do
-          do i = 1, nelgv
-             if (i .ge. start_el .and. i .le. end_el) then
-                el_idx = i - start_el + 1
+          do i = 1, nelgv_i4
+             if (i .ge. start_el_i4 .and. i .le. end_el_i4) then
+                el_idx = i - start_el_i4 + 1
                 do j = 1, 2*ndim
                    sym_facet = facet_map(j)
                    select case(trim(cbc(j,i)))
                    case ('P')
+                      
+                      ! THIS NOT DONE YET
                       p_el_idx = int(bc_data(2+off,j,i))
                       p_facet = facet_map(int(bc_data(3+off,j,i)))
                       call msh%create_periodic_ids(sym_facet, el_idx, &
                            p_facet, p_el_idx)
+                      
                    end select
                 end do
              end if
           end do
-          do i = 1, nelgv
-             if (i .ge. start_el .and. i .le. end_el) then
-                el_idx = i - start_el + 1
+          do i = 1, nelgv_i4
+             if (i .ge. start_el_i4 .and. i .le. end_el_i4) then
+                el_idx = i - start_el_i4 + 1
                 do j = 1, 2*ndim
                    sym_facet = facet_map(j)
                    select case(trim(cbc(j,i)))
                    case ('P')
+                      
+                      ! THIS NOT DONE YET
                       p_el_idx = int(bc_data(2+off,j,i))
                       p_facet = facet_map(int(bc_data(3+off,j,i)))
                       call msh%create_periodic_ids(sym_facet, el_idx, &
                            p_facet, p_el_idx)
+                      
                    end select
                 end do
              end if
@@ -431,8 +448,8 @@ contains
           deallocate(cbc)
           deallocate(bc_data)
        else  ! Store bcs in a NEKTON session structure
-          allocate(cbc(6,nelgv))
-          do i = 1, nelgv
+          allocate(cbc(6,nelgv_i4))
+          do i = 1, nelgv_i4
              do j = 1, 2*ndim
                 read(9,'(a1, a3)') chtemp, cbc(j, i)
              end do
@@ -456,14 +473,13 @@ contains
   subroutine rea_file_add_point(htp, p, idx)
     type(htable_pt_t), intent(inout) :: htp
     type(point_t), intent(inout) :: p
-    integer, intent(inout) :: idx
+    integer(i8), intent(inout) :: idx
     integer(i8) :: tmp
 
     if (htp%get(p, tmp) .gt. 0) then
        idx = idx + 1
-       tmp = idx
-       call htp%set(p, tmp)
-       call p%set_id(tmp)
+       call htp%set(p, idx)
+       call p%set_id(idx)
     else
        call p%set_id(tmp)
     end if
@@ -480,7 +496,8 @@ contains
   !! are any existing user labeled zones.
   !! @param print_info Wether or not to print information to the standard
   !! output.
-  subroutine rea_file_mark_labeled_bc(msh, el_idx, facet, type, label, offset, print_info)
+  subroutine rea_file_mark_labeled_bc(msh, el_idx, facet, type, label, &
+       & offset, print_info)
     type(mesh_t), intent(inout) :: msh
     integer, intent(in) :: el_idx
     integer, intent(in) :: facet

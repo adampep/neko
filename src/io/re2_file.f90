@@ -34,7 +34,7 @@
 !! @details This module is used to read/write binary NEKTION mesh data
 module re2_file
   use generic_file, only: generic_file_t
-  use num_types, only: rp, i8
+  use num_types, only: rp, dp, i4, i8
   use utils
   use mesh, only: mesh_t
   use point, only: point_t
@@ -156,7 +156,7 @@ contains
     if (ierr .ne. 0) then
        call neko_log%error("Can't open binary NEKTON file ")
     end if
-    itmp8 = nelv
+    itmp8 = int(nelv, i8)
     dist = linear_dist_t(itmp8, pe_rank, pe_size, NEKO_COMM)
 
 
@@ -180,10 +180,10 @@ contains
     mpi_offset = RE2_HDR_SIZE * MPI_CHARACTER_SIZE + MPI_REAL_SIZE
     if (ndim .eq. 2) then
        mpi_offset = mpi_offset + dist%num_global() * &
-            & int(re2_data_xy_size,i8)
+            & int(re2_data_xy_size, i8)
     else
        mpi_offset = mpi_offset + dist%num_global() * &
-            & int(re2_data_xyz_size,i8)
+            & int(re2_data_xyz_size, i8)
     end if
 
     !> @todo Add support for curved side data
@@ -194,7 +194,7 @@ contains
        ncurv = int(t2)
        mpi_offset = mpi_offset + MPI_DOUBLE_PRECISION_SIZE
        call re2_file_read_curve(msh, ncurv, dist, fh, mpi_offset, v2_format)
-       mpi_offset = mpi_offset + int(ncurv,i8) * int(re2_data_cv_size,i8)
+       mpi_offset = mpi_offset + int(ncurv, i8) * int(re2_data_cv_size, i8)
        call MPI_File_read_at_all(fh, mpi_offset, t2, 1, MPI_DOUBLE_PRECISION, &
             & status, ierr)
        nbcs = int(t2)
@@ -206,7 +206,7 @@ contains
             & status, ierr)
        mpi_offset = mpi_offset + MPI_INTEGER_SIZE
        call re2_file_read_curve(msh, ncurv, dist, fh, mpi_offset, v2_format)
-       mpi_offset = mpi_offset + int(ncurv,i8) * int(re2_data_cv_size,i8)
+       mpi_offset = mpi_offset + int(ncurv, i8) * int(re2_data_cv_size, i8)
        call MPI_File_read_at_all(fh, mpi_offset, nbcs, 1, MPI_INTEGER, &
             & status, ierr)
        mpi_offset = mpi_offset + MPI_INTEGER_SIZE
@@ -240,7 +240,7 @@ contains
     integer :: element_offset
     integer :: re2_data_xy_size
     integer :: re2_data_xyz_size
- 
+
     select type(data)
     type is (mesh_t)
        msh => data
@@ -326,7 +326,7 @@ contains
     integer, intent(in) :: re2_data_xyz_size
     logical, intent(in) :: v2_format
     type(linear_dist_t) :: dist
-    integer(i8) :: element_offset
+    integer(i8) :: pt_idx, element_offset
     type(re2v1_xy_t), allocatable :: re2v1_data_xy(:)
     type(re2v1_xyz_t), allocatable :: re2v1_data_xyz(:)
     type(re2v2_xy_t), allocatable :: re2v2_data_xy(:)
@@ -334,7 +334,7 @@ contains
     type(MPI_Status) :: status
     type(htable_pt_t) :: htp
     type(point_t) :: p(8)
-    integer :: pt_idx, nelv
+    integer :: nelv
     integer :: i, j, ierr
 
     nelv = dist%num_local()
@@ -468,14 +468,18 @@ contains
     !This can probably be made nicer...
     do i = 1, ncurve
        if(v2_format) then
-          el_idx = re2v2_data_curve(i)%elem - dist%start_idx()
+          ! rea supports msh%glb_nelv bounded by integer4
+          ! local element number
+          el_idx = re2v2_data_curve(i)%elem - int(dist%start_idx(), i4)
           id = re2v2_data_curve(i)%zone
           chtemp = re2v2_data_curve(i)%type
           do j = 1, 5
              curve_data(j,id, el_idx) = re2v2_data_curve(i)%point(j)
           enddo
        else
-          el_idx = re2v1_data_curve(i)%elem - dist%start_idx()
+          ! rea supports msh%glb_nelv bounded by integer4
+          ! local element number
+          el_idx = re2v1_data_curve(i)%elem - int(dist%start_idx(), i4)
           id = re2v1_data_curve(i)%zone
           chtemp = re2v1_data_curve(i)%type
           do j = 1, 5
@@ -483,6 +487,7 @@ contains
           enddo
        end if
 
+       ! this part may be executed on a single mpi rank only
        curve_element(el_idx) = .true.
        !This might need to be extended
        select case(trim(chtemp))
@@ -578,7 +583,7 @@ contains
        !
        do i = 1, nbcs
 
-          el_idx = int(re2v2_data_bc(i)%elem) - dist%start_idx()
+          el_idx = int(re2v2_data_bc(i)%elem) - int(dist%start_idx(), i4)
           sym_facet = facet_map(int(re2v2_data_bc(i)%face))
 
           select case(trim(re2v2_data_bc(i)%type))
@@ -608,7 +613,7 @@ contains
        end do
 
        do i = 1, nbcs
-          el_idx = int(re2v2_data_bc(i)%elem) - dist%start_idx()
+          el_idx = int(re2v2_data_bc(i)%elem) - int(dist%start_idx(), i4)
           sym_facet = facet_map(int(re2v2_data_bc(i)%face))
 
           select case(trim(re2v2_data_bc(i)%type))
@@ -704,7 +709,7 @@ contains
        if (periodic) then
           do j = 1, 3
              do i = 1, nbcs
-                el_idx = re2v2_data_bc(i)%elem - dist%start_idx()
+                el_idx = re2v2_data_bc(i)%elem - int(dist%start_idx(), i4)
                 sym_facet = facet_map(int(re2v2_data_bc(i)%face))
                 select case(trim(re2v2_data_bc(i)%type))
                 case ('P')
@@ -725,7 +730,7 @@ contains
        !
        do i = 1, nbcs
 
-          el_idx = re2v1_data_bc(i)%elem - dist%start_idx()
+          el_idx = re2v1_data_bc(i)%elem - int(dist%start_idx(), i4)
           sym_facet = facet_map(re2v1_data_bc(i)%face)
 
           select case(trim(re2v1_data_bc(i)%type))
@@ -755,7 +760,7 @@ contains
 
        do i = 1, nbcs
 
-          el_idx = re2v1_data_bc(i)%elem - dist%start_idx()
+          el_idx = re2v1_data_bc(i)%elem - int(dist%start_idx(), i4)
           sym_facet = facet_map(re2v1_data_bc(i)%face)
           select case(trim(re2v1_data_bc(i)%type))
           case ('W')
@@ -850,7 +855,7 @@ contains
        if (periodic) then
           do j = 1, 3
              do i = 1, nbcs
-                el_idx = re2v1_data_bc(i)%elem - dist%start_idx()
+                el_idx = re2v1_data_bc(i)%elem - int(dist%start_idx(), i4)
                 sym_facet = facet_map(re2v1_data_bc(i)%face)
                 select case(trim(re2v1_data_bc(i)%type))
                 case ('P')
@@ -878,7 +883,8 @@ contains
   !! are any existing user labeled zones.
   !! @param print_info Wether or not to print information to the standard
   !! output.
-  subroutine re2_file_mark_labeled_bc(msh, el_idx, facet, type, label, offset, print_info)
+  subroutine re2_file_mark_labeled_bc(msh, el_idx, facet, type, label, &
+       & offset, print_info)
     type(mesh_t), intent(inout) :: msh
     integer, intent(in) :: el_idx
     integer, intent(in) :: facet
@@ -911,14 +917,13 @@ contains
   subroutine re2_file_add_point(htp, p, idx)
     type(htable_pt_t), intent(inout) :: htp
     type(point_t), intent(inout) :: p
-    integer, intent(inout) :: idx
+    integer(i8), intent(inout) :: idx
     integer(i8) :: tmp
 
     if (htp%get(p, tmp) .gt. 0) then
        idx = idx + 1
-       tmp = idx
-       call htp%set(p, tmp)
-       call p%set_id(tmp)
+       call htp%set(p, idx)
+       call p%set_id(idx)
     else
        call p%set_id(tmp)
     end if
