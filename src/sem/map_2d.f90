@@ -1,7 +1,7 @@
 !> Maps a 3D dofmap to a 2D spectral element grid.
 
 module map_2d
-  use num_types, only: rp
+  use num_types, only: i8, rp
   use space, only: space_t
   use dofmap, only: dofmap_t
   use map_1d
@@ -25,15 +25,15 @@ module map_2d
   use, intrinsic :: iso_c_binding
   implicit none
   private
-  
+
   type, public :: map_2d_t
      integer :: nelv_2d = 0 !< Number of elements in 2D mesh on this rank
-     integer :: glb_nelv_2d = 0 !< global number of elements in 2d
-     integer :: offset_el_2d = 0 !< element offset for this rank
+     integer(i8) :: glb_nelv_2d = 0 !< global number of elements in 2d
+     integer(i8) :: offset_el_2d = 0 !< element offset for this rank
      integer :: lxy = 0 !< number of gll points per 2D element
      integer :: n_2d = 0 !< total number of gll points (nelv_2d*lxy)
      integer, allocatable :: idx_2d(:) !< Mapping of GLL point from 3D to 2D
-     integer, allocatable :: el_idx_2d(:) !< Mapping of element in 3D to 2D
+     integer(i8), allocatable :: el_idx_2d(:) !< Mapping of element in 3D to 2D
      type(map_1d_t) :: map_1d !< 1D map in normal direction to 2D plane
      type(mesh_t), pointer :: msh !< 3D mesh
      type(dofmap_t), pointer :: dof => null() !< 3D dofmap
@@ -62,11 +62,13 @@ contains
     real(kind=rp), intent(in) :: tol
     real(kind=rp) :: el_dim(3,3), el_h
     integer :: i, e, j, ierr, k, lx, lxy, n
+    integer(i8) :: itmp
+
     call this%map_1d%init(coef,dir,tol)
     this%msh => coef%msh
     this%coef => coef
     this%dof => coef%dof
-    
+
     call this%u%init(this%dof)
     call this%old_u%init(this%dof)
     call this%avg_u%init(this%dof)
@@ -83,13 +85,15 @@ contains
        end if
     end do
     this%glb_nelv_2d = 0
-    call MPI_Allreduce(this%nelv_2d, this%glb_nelv_2d, 1, &
-         MPI_INTEGER, MPI_SUM, NEKO_COMM, ierr)
+    itmp = this%nelv_2d
+    call MPI_Allreduce(itmp, this%glb_nelv_2d, 1, &
+         MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
 
     this%offset_el_2d = 0
-    call MPI_Exscan(this%nelv_2d, this%offset_el_2d, 1, &
-         MPI_INTEGER, MPI_SUM, NEKO_COMM, ierr)
-    allocate(this%el_idx_2d(this%nelv_2d)) 
+    itmp = this%nelv_2d
+    call MPI_Exscan(itmp, this%offset_el_2d, 1, &
+         MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
+    allocate(this%el_idx_2d(this%nelv_2d))
     do i = 1, this%nelv_2d
        this%el_idx_2d(i) = this%offset_el_2d + i
     end do
@@ -107,7 +111,8 @@ contains
           if (this%map_1d%dir_el(e) .eq. 2) then
              do i = 1, lx
                 do k = 1, lx
-                   this%idx_2d(j*lxy+k+lx*(i-1)) = linear_index(k,1,i,e,lx,lx,lx)
+                   this%idx_2d(j*lxy+k+lx*(i-1)) = &
+                        & linear_index(k,1,i,e,lx,lx,lx)
                 end do
              end do
           end if
@@ -146,7 +151,7 @@ contains
     this%domain_height = this%u%x(1,1,1,1)
 
   end subroutine map_2d_init
-   
+
   subroutine map_2d_init_char(this, coef,  dir, tol)
     class(map_2d_t) :: this
     type(coef_t), intent(inout), target :: coef
@@ -170,7 +175,7 @@ contains
 
 
   !> Computes average if field list in one direction and outputs 2D field
-  !! with averaged values. 
+  !! with averaged values.
   !! @param fld_data2D output 2D averages
   !! @param field_list list of fields to be averaged
   subroutine map_2d_average_field_list(this,fld_data2D,fld_data3D)
@@ -178,7 +183,7 @@ contains
     type(fld_file_data_t), intent(inout) :: fld_data2D
     type(field_list_t), intent(inout) :: fld_data3D
     real(kind=rp), pointer, dimension(:,:,:,:) :: x_ptr, y_ptr
-    
+
     type(vector_ptr_t), allocatable :: fields2d(:)
     integer :: n_2d, n
     integer :: i, j, lx, lxy, e
@@ -229,7 +234,7 @@ contains
             this%map_1d%dir_el, this%coef, this%msh%nelv, lx)
        call copy(this%old_u%x,this%u%x,n)
        call copy(this%avg_u%x,this%u%x,n)
-       call perform_global_summation(this%u, this%avg_u, & 
+       call perform_global_summation(this%u, this%avg_u, &
             this%old_u, this%map_1d%n_el_lvls, &
             this%map_1d%dir_el,this%coef%gs_h, this%coef%mult, &
             this%msh%nelv, lx)
@@ -243,10 +248,10 @@ contains
     end do
 
   end subroutine map_2d_average_field_list
- 
-  
+
+
   !> Computes average if field list in one direction and outputs 2D field
-  !! with averaged values. 
+  !! with averaged values.
   !! @param fld_data2D output 2D averages
   !! @param fld_data3D fld_file_data of fields to be averaged
   subroutine map_2d_average(this,fld_data2D,fld_data3D)
@@ -254,7 +259,7 @@ contains
     type(fld_file_data_t), intent(inout) :: fld_data2D
     type(fld_file_data_t), intent(inout) :: fld_data3D
     real(kind=rp), pointer, dimension(:,:,:,:) :: x_ptr, y_ptr
-    
+
     type(vector_ptr_t), allocatable :: fields3d(:), fields2d(:)
     integer :: n_2d, n
     integer :: i, j, lx, lxy, e
@@ -295,7 +300,7 @@ contains
 
     call fld_data2D%init_n_fields(fld_data3D%size(),n_2d)
     call fld_data3D%get_list(fields3D,fld_data3D%size())
-    
+
     this%u = 0.0_rp
     this%old_u = 0.0_rp
     this%avg_u = 0.0_rp
@@ -319,7 +324,7 @@ contains
        end do
     end do
   end subroutine map_2d_average
- 
+
   subroutine perform_global_summation(u, avg_u, old_u, n_levels, &
                                      hom_dir_el, gs_h, mult, nelv, lx)
     type(field_t), intent(inout) :: u, avg_u, old_u
@@ -330,9 +335,9 @@ contains
     real(kind=rp) :: temp_el(lx,lx,lx)
     integer :: n, i, j, e, k
     type(c_ptr) :: ptr
-  
+
     n = u%dof%size()
-  
+
     do i = 1, n_levels-1
        !compute average
        if (NEKO_BCKND_DEVICE .eq. 1) &
@@ -375,7 +380,7 @@ contains
        end do
     end do
   end subroutine perform_global_summation
-  
+
   subroutine perform_local_summation(u_out, u, el_heights, domain_height,&
                                      hom_dir_el, coef, nelv, lx)
     type(field_t), intent(inout) :: u, u_out, el_heights
@@ -385,14 +390,14 @@ contains
     real(kind=rp), intent(in) :: domain_height
     real(kind=rp) :: wt
     integer :: n, i, j, e, k
-  
+
     n = nelv*lx**3
-  
+
     call col2(u%x,el_heights%x,n)
     call cmult(u%x, 1.0_rp/(2.0*domain_height),n)
     call rzero(u_out%x,n)
-  
-  
+
+
     do e = 1, nelv
        do i = 1,lx
           do j = 1, lx
@@ -409,7 +414,7 @@ contains
           end do
        end do
     end do
-  
+
     do e = 1, nelv
        do i = 1,lx
           do j = 1, lx

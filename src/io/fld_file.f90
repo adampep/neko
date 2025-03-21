@@ -176,6 +176,8 @@ contains
        end if
 
        ! fld format is constrained to glb_nelv given by i4 only;
+       if (glb_nelv > huge(glb_nelv_i4)) &
+            & call neko_error('fld does not support int8 for element count')
        ! cast element index
        allocate(idx_i4(nelv))
        do i = 1, nelv
@@ -264,6 +266,8 @@ contains
        ! Store global idx of each element
        allocate(idx_i4(msh%nelv))
        ! fld format is constrained to glb_nelv given by i4 only;
+       if (glb_nelv > huge(glb_nelv_i4)) &
+         & call neko_error('fld does not support int8 for element count')
        ! cast element index
        do i = 1, msh%nelv
           idx_i4(i) = int(msh%elements(i)%e%id(), i4)

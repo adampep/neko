@@ -34,6 +34,7 @@
 module datadist
   use mpi_f08, only : MPI_Comm
   use num_types, only : i4, i8
+  use utils, only: neko_error
   implicit none
   private
 
@@ -70,13 +71,18 @@ contains
     integer :: size             !< Size of comm where the dist. is def. on
     type(MPI_Comm) :: comm      !< comm. to define the dist. over
     type(linear_dist_t), target :: this
+    integer(i8) :: itmp8
 
     this%M = n
     this%comm = comm
     this%pe_rank = rank
     this%pe_size = size
 
-    this%L = floor(dble(this%M) / dble(this%pe_size))
+    itmp8 = floor(dble(this%M) / dble(this%pe_size), i8)
+    ! local number of elements is bounded by integer4
+    if (itmp8 > huge(size)) &
+         & call neko_error('Local element number cannot exceed int4')
+    this%L = int(itmp8, i4)
     this%R = int(modulo(this%M, int(this%pe_size, i8)), i4)
     this%Ip = floor((dble(this%M) + dble(this%pe_size) - &
          dble(this%pe_rank) - 1d0) / dble(this%pe_size))

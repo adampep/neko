@@ -234,6 +234,7 @@ contains
     character(len=5), parameter :: RE2_HDR_VER = '#v001'
     character(len=54), parameter :: RE2_HDR_STR = 'RE2 exported by NEKO'
     integer :: i, j, ierr, nelgv
+    integer(i8) :: itmp8, nelgv8, element_offset8
     type(MPI_Status) :: status
     type(MPI_File) :: fh
     integer (kind=MPI_OFFSET_KIND) :: mpi_offset
@@ -250,11 +251,20 @@ contains
 
     call MPI_Type_size(MPI_RE2V1_DATA_XY, re2_data_xy_size, ierr)
     call MPI_Type_size(MPI_RE2V1_DATA_XYZ, re2_data_xyz_size, ierr)
-    call MPI_Reduce(msh%nelv, nelgv, 1, &
-         MPI_INTEGER, MPI_SUM, 0, NEKO_COMM, ierr)
-    element_offset = 0
-    call MPI_Exscan(msh%nelv, element_offset, 1, &
-         MPI_INTEGER, MPI_SUM, NEKO_COMM, ierr)
+
+    ! Currently re2 supports msh%glb_nelv bounded by integer4
+    itmp8 = int(msh%nelv, i8)
+    call MPI_Reduce(itmp8, nelgv8, 1, MPI_INTEGER8, &
+         MPI_SUM, 0, NEKO_COMM, ierr)
+    element_offset8 = 0
+    call MPI_Exscan(itmp8, element_offset8, 1, &
+         MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
+
+    ! For now re2 supports msh%glb_nelv bounded by integer4
+    if (nelgv8 > huge(nelgv)) &
+         & call neko_error('re2 does not support int8 for element count')
+    nelgv = int(nelgv8, i4)
+    element_offset = int(element_offset8, i4)
 
     call neko_log%message('Writing data as a binary NEKTON file ' // this%fname)
 
@@ -692,12 +702,15 @@ contains
 
              labeled_zone_offsets(NEKO_SHL_BC_LABEL) = 1
           case ('P')
+             
+             ! THIS NOT DONE YET
              periodic = .true.
              p_el_idx = int(re2v2_data_bc(i)%bc_data(1))
              p_facet = facet_map(int(re2v2_data_bc(i)%bc_data(2)))
              call msh%get_facet_ids(sym_facet, el_idx, pids)
              call msh%mark_periodic_facet(sym_facet, el_idx, &
                   p_facet, p_el_idx, pids)
+             
           case default
              write (*,*) trim(re2v2_data_bc(i)%type), 'bc type not supported yet'
              write (*,*) re2v2_data_bc(i)%bc_data
@@ -714,10 +727,13 @@ contains
                 sym_facet = facet_map(int(re2v2_data_bc(i)%face))
                 select case(trim(re2v2_data_bc(i)%type))
                 case ('P')
+                   
+                   ! THIS NOT DONE YET
                    p_el_idx = int(re2v2_data_bc(i)%bc_data(1))
                    p_facet = facet_map(int(re2v2_data_bc(i)%bc_data(2)))
                    call msh%create_periodic_ids(sym_facet, el_idx, &
                         p_facet, p_el_idx)
+                   
                 end select
              end do
           end do
@@ -840,12 +856,15 @@ contains
 
              labeled_zone_offsets(NEKO_SHL_BC_LABEL) = 1
           case ('P')
+             
+             ! THIS NOT DONE YET
              periodic = .true.
              p_el_idx = int(re2v1_data_bc(i)%bc_data(1))
              p_facet = facet_map(int(re2v1_data_bc(i)%bc_data(2)))
              call msh%get_facet_ids(sym_facet, el_idx, pids)
              call msh%mark_periodic_facet(sym_facet, el_idx, &
                   p_facet, p_el_idx, pids)
+             
           case default
              write (*,*) re2v1_data_bc(i)%type, 'bc type not supported yet'
              write (*,*) re2v1_data_bc(i)%bc_data
@@ -862,10 +881,13 @@ contains
                 sym_facet = facet_map(re2v1_data_bc(i)%face)
                 select case(trim(re2v1_data_bc(i)%type))
                 case ('P')
+                   
+                   ! THIS NOT DONE YET
                    p_el_idx = int(re2v1_data_bc(i)%bc_data(1))
                    p_facet = facet_map(int(re2v1_data_bc(i)%bc_data(2)))
                    call msh%create_periodic_ids(sym_facet, el_idx, &
                         p_facet, p_el_idx)
+                   
                 end select
              end do
           end do

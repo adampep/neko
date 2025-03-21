@@ -16,10 +16,11 @@ program genmeshbox
   type(htable_pt_t) :: htable_pts
   logical :: period_x, period_y, period_z
   type(point_t) :: p(2,2,2)
-  type(tuple4_i4_t) :: facet_ord
+  type(tuple4_i8_t) :: facet_ord
   integer :: argc, gdim = 3
-  integer :: el_idx, p_el_idx, pt_idx
+  integer :: el_idx, p_el_idx
   integer :: i, zone_id, e_x, e_y, e_z, ix, iy, iz, e_id
+  integer(i8) :: pt_idx
   real(kind=dp), allocatable :: el_len_x(:), el_len_y(:), el_len_z(:)
   real(kind=dp), allocatable :: cumm_x(:), cumm_y(:), cumm_z(:)
   type(vector_t) :: dist_x, dist_y, dist_z
@@ -204,8 +205,8 @@ program genmeshbox
                     coord(1) = cumm_x(e_x + 1 + ix)
                     coord(2) = cumm_y(e_y + 1 + iy)
                     coord(3) = cumm_z(e_z + 1 + iz)
-                    pt_idx = 1 + (ix + e_x) + (iy + e_y)*(nelx + 1) + &
-                         (iz + e_z)*(nelx + 1)*(nely + 1)
+                    pt_idx = int(1 + (ix + e_x) + (iy + e_y)*(nelx + 1) + &
+                         (iz + e_z)*(nelx + 1)*(nely + 1), i8)
                     p(ix+1, iy+1, iz+1) = point_t(coord, pt_idx)
                  end do
               end do

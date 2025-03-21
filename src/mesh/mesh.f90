@@ -32,7 +32,7 @@
 !
 !> Defines a mesh
 module mesh
-  use num_types, only : rp, dp, i8
+  use num_types, only : rp, dp, i4, i8
   use point, only : point_t
   use element, only : element_t
   use hex
@@ -81,17 +81,17 @@ module mesh
      type(mesh_element_t), allocatable :: elements(:) !< List of elements
      logical, allocatable :: dfrmd_el(:) !< List of elements
 
-     type(htable_i4_t) :: htp   !< Table of unique points (global->local)
-     type(htable_i4t4_t) :: htf !< Table of unique faces (facet->local id)
-     type(htable_i4t2_t) :: hte !< Table of unique edges (edge->local id)
+     type(htable_i8_t) :: htp   !< Table of unique points (global->local)
+     type(htable_i8t4_t) :: htf !< Table of unique faces (facet->local id)
+     type(htable_i8t2_t) :: hte !< Table of unique edges (edge->local id)
 
-     integer, allocatable :: facet_neigh(:,:)  !< Facet to neigh. element table
+     integer(i8), allocatable :: facet_neigh(:,:) !< Facet to neigh. elem. table
 
      !> Facet to element's id tuple and the mapping of the
      !! points between lower id element and higher
      !! \f$ t=(low_id element, element with higher global id) \f$
      class(htable_t), allocatable :: facet_map
-     type(stack_i4_t), allocatable :: point_neigh(:) !< Point to neigh. table
+     type(stack_i8_t), allocatable :: point_neigh(:) !< Point to neigh. table
 
      type(distdata_t) :: ddata            !< Mesh distributed data
      logical, allocatable :: neigh(:)     !< Neighbouring ranks
@@ -186,7 +186,7 @@ contains
     integer, intent(in) :: gdim          !< Geometric dimension
     integer, intent(in) :: nelv          !< Local number of elements
     integer :: ierr
-    integer(i8) :: itmp
+    integer(i8) :: itmp8
     character(len=LOG_SIZE) :: log_buf
 
     call this%free()
@@ -199,13 +199,13 @@ contains
        call neko_warning(log_buf)
     end if
 
-    itmp = this%nelv
-    call MPI_Allreduce(itmp, this%glb_nelv, 1, &
+    itmp8 = this%nelv
+    call MPI_Allreduce(itmp8, this%glb_nelv, 1, &
          MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
 
     this%offset_el = 0
-    itmp = this%nelv
-    call MPI_Exscan(itmp, this%offset_el, 1, &
+    itmp8 = this%nelv
+    call MPI_Exscan(itmp8, this%offset_el, 1, &
          MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
 
     call mesh_init_common(this)
@@ -250,9 +250,9 @@ contains
        this%npts = NEKO_HEX_NPTS
        !> Only intialize if we generate connectivity
        if (this%lgenc) then
-          allocate(htable_i4t4_t::this%facet_map)
+          allocate(htable_i8t4_t::this%facet_map)
           select type (fmp => this%facet_map)
-          type is(htable_i4t4_t)
+          type is(htable_i8t4_t)
              call fmp%init(this%nelv, facet_data)
           end select
 
@@ -267,9 +267,9 @@ contains
        end do
        this%npts = NEKO_QUAD_NPTS
        if (this%lgenc) then
-          allocate(htable_i4t2_t::this%facet_map)
+          allocate(htable_i8t2_t::this%facet_map)
           select type (fmp => this%facet_map)
-          type is(htable_i4t2_t)
+          type is(htable_i8t2_t)
              call fmp%init(this%nelv, facet_data)
           end select
 
@@ -348,9 +348,9 @@ contains
 
     if (allocated(this%facet_map)) then
        select type (fmp => this%facet_map)
-       type is(htable_i4t2_t)
+       type is(htable_i8t2_t)
           call fmp%free()
-       type is(htable_i4t4_t)
+       type is(htable_i8t4_t)
           call fmp%free()
        end select
        deallocate(this%facet_map)
@@ -463,16 +463,17 @@ contains
   !> Generate element-to-element connectivity
   subroutine mesh_generate_conn(this)
     class(mesh_t), target, intent(inout) :: this
-    type(tuple_i4_t) :: edge
-    type(tuple4_i4_t) :: face, face_comp
-    type(tuple_i4_t) :: facet_data
+    type(tuple_i8_t) :: edge
+    type(tuple4_i8_t) :: face, face_comp
+    type(tuple_i8_t) :: facet_data
     type(stack_i4_t) :: neigh_order
     class(element_t), pointer :: ep
-    type(tuple_i4_t) :: e
-    type(tuple4_i4_t) :: f
+    type(tuple_i8_t) :: e
+    type(tuple4_i8_t) :: f
     integer :: p_local_idx
     integer :: el, id
-    integer :: i, j, k, ierr, el_glb_idx, n_sides, n_nodes, src, dst
+    integer(i8) :: id8, el_glb_idx
+    integer :: i, j, k, ierr, n_sides, n_nodes, src, dst
 
     if (this%lconn) return
 
@@ -488,8 +489,8 @@ contains
              call this%add_point(ep%pts(i)%p, id)
              p_local_idx = this%get_local(this%points(id))
              !should stack have inout on what we push? would be neat with in
-             id = ep%id()
-             call this%point_neigh(p_local_idx)%push(id)
+             id8 = ep%id()
+             call this%point_neigh(p_local_idx)%push(id8)
          end do
          do i = 1, NEKO_HEX_NFCS
              call ep%facet_id(f, i)
@@ -506,8 +507,8 @@ contains
              call this%add_point(ep%pts(i)%p, id)
              p_local_idx = this%get_local(this%points(id))
              !should stack have inout on what we push? would be neat with in
-             id = ep%id()
-             call this%point_neigh(p_local_idx)%push(id)
+             id8 = ep%id()
+             call this%point_neigh(p_local_idx)%push(id8)
           end do
 
           do i = 1, NEKO_QUAD_NEDS
@@ -528,7 +529,7 @@ contains
 
     ! Compute global number of unique points
     call MPI_Allreduce(this%max_pts_id, this%glb_mpts, 1, &
-         MPI_INTEGER, MPI_MAX, NEKO_COMM, ierr)
+         MPI_INTEGER8, MPI_MAX, NEKO_COMM, ierr)
 
     !
     ! Find all (local) boundaries
@@ -538,15 +539,15 @@ contains
     !! that both odd and even sides are marked
     !! @todo These loop nests needs a lot of love...
     select type (fmp => this%facet_map)
-    type is(htable_i4t2_t)
+    type is(htable_i8t2_t)
        do k = 1, 2
           do i = 1, this%nelv
-             el_glb_idx = i + this%offset_el
+             el_glb_idx = int(i, i8) + this%offset_el
              do j = 1, n_sides
                 call this%elements(i)%e%facet_id(edge, j)
 
                 ! Assume that all facets are on the exterior
-                facet_data%x = (/  0, 0/)
+                facet_data%x = (/ 0_i8, 0_i8/)
 
                 !check it this face has shown up earlier
                 if (fmp%get(edge, facet_data) .eq. 0) then
@@ -574,15 +575,15 @@ contains
              end do
           end do
        end do
-    type is(htable_i4t4_t)
+    type is(htable_i8t4_t)
 
        do k = 1, 2
           do i = 1, this%nelv
-             el_glb_idx = i + this%offset_el
+             el_glb_idx = int(i, i8) + this%offset_el
              do j = 1, n_sides
                 call this%elements(i)%e%facet_id(face, j)
 
-                facet_data%x = (/ 0, 0/)
+                facet_data%x = (/ 0_i8, 0_i8/)
 
                 !check it this face has shown up earlier
                 if (fmp%get(face, facet_data) .eq. 0) then
@@ -749,7 +750,7 @@ contains
           call MPI_Get_count(status, MPI_INTEGER, n_recv, ierr)
 
           select type (fmp => this%facet_map)
-          type is(htable_i4t2_t)
+          type is(htable_i8t2_t)
              do j = 1, n_recv, n_nodes + 2
                 neigh_el = recv_buffer(j)
                 recv_side = recv_buffer(j+1)
@@ -785,7 +786,7 @@ contains
                 end if
 
              end do
-          type is(htable_i4t4_t)
+          type is(htable_i8t4_t)
              do j = 1, n_recv, n_nodes + 2
                 neigh_el = recv_buffer(j)
                 recv_side = recv_buffer(j+1)
@@ -844,12 +845,13 @@ contains
   !> Generate element-element connectivity via points between PEs
   subroutine mesh_generate_external_point_conn(this)
     type(mesh_t), intent(inout) :: this
-    type(stack_i4_t) :: send_buffer
+    type(stack_i8_t) :: send_buffer
     type(MPI_Status) :: status
-    integer, allocatable :: recv_buffer(:)
+    integer(i8), allocatable :: recv_buffer(:)
     integer :: i, j, k
-    integer :: max_recv, ierr, src, dst, n_recv, neigh_el
-    integer :: pt_glb_idx, pt_loc_idx, num_neigh
+    integer :: max_recv, ierr, src, dst, n_recv
+    integer(i8) :: pt_glb_idx, num_neigh8, neigh_el
+    integer :: pt_loc_idx, num_neigh
     integer, contiguous, pointer :: neighs(:)
 
 
@@ -859,9 +861,9 @@ contains
     ! [pt_glb_idx, #neigh, neigh id_1 ....neigh_id_n]
     do i = 1, this%mpts
        pt_glb_idx = this%points(i)%id() ! Adhere to standards...
-       num_neigh = this%point_neigh(i)%size()
+       num_neigh8 = int(this%point_neigh(i)%size(), i8)
        call send_buffer%push(pt_glb_idx)
-       call send_buffer%push(num_neigh)
+       call send_buffer%push(num_neigh8)
 
        neighs => this%point_neigh(i)%array()
        do j = 1, this%point_neigh(i)%size()
@@ -878,7 +880,7 @@ contains
        dst = modulo(pe_rank + i, pe_size)
 
        call MPI_Sendrecv(send_buffer%array(), send_buffer%size(), &
-            MPI_INTEGER, dst, 0, recv_buffer, max_recv, MPI_INTEGER, src, 0, &
+            MPI_INTEGER8, dst, 0, recv_buffer, max_recv, MPI_INTEGER8, src, 0, &
             NEKO_COMM, status, ierr)
 
        call MPI_Get_count(status, MPI_INTEGER, n_recv, ierr)
@@ -886,7 +888,7 @@ contains
        j = 1
        do while (j .le. n_recv)
           pt_glb_idx = recv_buffer(j)
-          num_neigh = recv_buffer(j + 1)
+          num_neigh = int(recv_buffer(j + 1), i4)
           ! Check if the point is present on this PE
           pt_loc_idx = this%have_point_glb_idx(pt_glb_idx)
           if (pt_loc_idx .gt. 0) then
@@ -920,9 +922,9 @@ contains
     type(MPI_Status) :: status
     type(MPI_Request) :: send_req, recv_req
     integer, contiguous, pointer :: p1(:), p2(:), ns_id(:)
-    integer :: i, j, id, ierr, num_edge_glb, edge_offset, num_edge_loc
+    integer :: i, j, id, ierr, edge_offset, num_edge_loc
     integer :: k, l , shared_offset, glb_nshared, n_glb_id
-    integer(kind=i8) :: C, glb_max, glb_id
+    integer(kind=i8) :: C, num_edge_glb, glb_max, glb_id
     integer(kind=i8), pointer :: glb_ptr
     integer(kind=i8), allocatable :: recv_buff(:)
     logical :: shared_edge
@@ -945,11 +947,11 @@ contains
     !
     C = this%glb_nelv * int(NEKO_HEX_NEDS, i8)
 
-    num_edge_glb = 2* this%meds
+    num_edge_glb = 2* int(this%meds, i8)
     call MPI_Allreduce(MPI_IN_PLACE, num_edge_glb, 1, &
-         MPI_INTEGER, MPI_SUM, NEKO_COMM,  ierr)
+         MPI_INTEGER8, MPI_SUM, NEKO_COMM,  ierr)
 
-    glb_max = int(num_edge_glb, i8)
+    glb_max = num_edge_glb
 
     call non_shared_edges%init(this%hte%num_entries())
 
@@ -1209,7 +1211,7 @@ contains
              facet_offset = facet_offset + 1
           else
              select type(fmp => this%facet_map)
-             type is(htable_i4t2_t)
+             type is(htable_i8t2_t)
                 if (fmp%get(edge, facet_data) .eq. 0) then
                    if (facet_data%x(2) .lt. 0) then
                       if (abs(facet_data%x(2)) .lt. (this%offset_el + 1)) then
@@ -1236,7 +1238,7 @@ contains
              facet_offset = facet_offset + 1
           else
              select type(fmp => this%facet_map)
-             type is(htable_i4t4_t)
+             type is(htable_i8t4_t)
                 if (fmp%get(face, facet_data) .eq. 0) then
                    if (facet_data%x(2) .lt. 0) then
                       if (abs(facet_data%x(2)) .lt. (this%offset_el + 1)) then
@@ -1403,7 +1405,8 @@ contains
     integer, value :: el
     type(point_t), target, intent(inout) :: p1, p2, p3, p4
     class(element_t), pointer :: ep
-    integer :: p(4), el_glb_idx
+    integer :: p(4)
+    integer(i8) :: el_glb_idx
     type(tuple_i4_t) :: e
 
     ! Connectivity invalidated if a new element is added
@@ -1418,7 +1421,7 @@ contains
     call this%add_point(p4, p(4))
 
     ep => this%elements(el)%e
-    el_glb_idx = el + this%offset_el
+    el_glb_idx = int(el, i8) + this%offset_el
 
     select type(ep)
     type is (quad_t)
@@ -1439,7 +1442,8 @@ contains
     integer, value :: el
     type(point_t), target, intent(inout) :: p1, p2, p3, p4, p5, p6, p7, p8
     class(element_t), pointer :: ep
-    integer :: p(8), el_glb_idx
+    integer :: p(8)
+    integer(i8) :: el_glb_idx
     type(tuple4_i4_t) :: f
     type(tuple_i4_t) :: e
 
@@ -1459,7 +1463,7 @@ contains
     call this%add_point(p8, p(8))
 
     ep => this%elements(el)%e
-    el_glb_idx = el + this%offset_el
+    el_glb_idx = int(el, i8) + this%offset_el
     select type(ep)
     type is (hex_t)
        call ep%init(el_glb_idx, &
@@ -1478,13 +1482,13 @@ contains
     class(mesh_t), intent(inout) :: this
     type(point_t), intent(inout) :: p
     integer, intent(inout) :: idx
-    integer :: tmp
+    integer(i8) :: tmp
 
     tmp = p%id()
 
     this%max_pts_id = max(this%max_pts_id, tmp)
 
-    if (tmp .le. 0) then
+    if (tmp .le. 0_i8) then
        call neko_error("Invalid point id")
     end if
 
@@ -1500,7 +1504,7 @@ contains
   !> Add a unique face represented as a 4-tuple to the mesh
   subroutine mesh_add_face(this, f)
     class(mesh_t), intent(inout) :: this
-    type(tuple4_i4_t), intent(inout) :: f
+    type(tuple4_i8_t), intent(inout) :: f
     integer :: idx
 
     if (this%htf%get(f, idx) .gt. 0) then
@@ -1513,7 +1517,7 @@ contains
   !> Add a unique edge represented as a 2-tuple to the mesh
   subroutine mesh_add_edge(this, e)
     class(mesh_t), intent(inout) :: this
-    type(tuple_i4_t), intent(inout) :: e
+    type(tuple_i8_t), intent(inout) :: e
     integer :: idx
 
     if (this%hte%get(e, idx) .gt. 0) then
@@ -1864,7 +1868,7 @@ contains
     class(mesh_t), intent(inout) :: this
     type(point_t), intent(inout) :: p
     integer :: local_id
-    integer :: tmp
+    integer(i8) :: tmp
 
     !> @todo why do we still need to do this?
     tmp = p%id()
@@ -1940,7 +1944,7 @@ contains
   !! @todo Consider moving this to distdata
   function mesh_have_point_glb_idx(this, index) result(local_id)
     class(mesh_t), intent(inout) :: this
-    integer, intent(inout) :: index  !< Global index
+    integer(i8), intent(inout) :: index  !< Global index
     integer :: local_id
 
     if (this%htp%get(index, local_id) .eq. 1) then

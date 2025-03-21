@@ -64,7 +64,8 @@ contains
   !> Initialise a fld_file_data object with nelv elements with a offset_nel
   subroutine fld_file_data_init(this, nelv, offset_el)
     class(fld_file_data_t), intent(inout) :: this
-    integer(i8), intent(in), optional :: nelv, offset_el
+    integer, intent(in), optional :: nelv
+    integer(i8), intent(in), optional :: offset_el
     call this%free()
     if (present(nelv)) this%nelv = nelv
     if (present(offset_el)) this%offset_el = offset_el
@@ -235,7 +236,6 @@ contains
        end do
        deallocate(this%s)
     end if
-    if (allocated(this%idx)) deallocate(this%idx)
     this%n_scalars = 0
     this%time = 0.0
     this%glb_nelv = 0

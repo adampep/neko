@@ -116,6 +116,9 @@ contains
     end if
     call MPI_BARRIER(NEKO_COMM)
 
+    !> @todo Missing check if the chosen direction is aligned wit the given axis
+    !! and orthogonal to the other two. In addition one would need to check if
+    !! the element is deformed in a given direction
     do i = 1, nelv
        !store which direction r,s,t corresponds to speciifed direction, x,y,z
        !we assume elements are stacked on each other...
@@ -148,7 +151,7 @@ contains
           if(this%el_lvl(e) .eq. -1) this%el_lvl(e) = i
        end if
     end do
-    ! While loop where at each iteation the global maximum value 
+    ! While loop where at each iteation the global maximum value
     ! propagates down one level.
     ! When the minumum value has propagated to the highest level this stops.
     ! Only works when the bottom plate of the domain is flat.
@@ -328,7 +331,7 @@ contains
 
 
   end subroutine map_1d_average_field_list
-  
+
   !> Computes average if vector_pt in two directions and outputs matrix
   !! with averaged values
   !! avg_planes contains coordinates in first row, avg. of fields in the rest
