@@ -336,7 +336,7 @@ contains
     integer, intent(in) :: re2_data_xyz_size
     logical, intent(in) :: v2_format
     type(linear_dist_t) :: dist
-    integer(i8) :: pt_idx, element_offset
+    integer(i8) :: pt_idx, el_idx, element_offset
     type(re2v1_xy_t), allocatable :: re2v1_data_xy(:)
     type(re2v1_xyz_t), allocatable :: re2v1_data_xyz(:)
     type(re2v2_xy_t), allocatable :: re2v2_data_xy(:)
@@ -367,8 +367,10 @@ contains
              if (nelv > 10) then
                 if(mod(i,nelv/10) .eq. 0) write(*,*) i, 'elements read'
              end if
+             ! elements are stored in global order
+             el_idx = element_offset + i
              ! swap vertices to keep symmetric vertex numbering in neko
-             call msh%add_element(i, p(1), p(2), p(4), p(3))
+             call msh%add_element(i, el_idx, p(1), p(2), p(4), p(3))
           end do
           deallocate(re2v1_data_xy)
        else
@@ -384,8 +386,10 @@ contains
              if (nelv > 10) then
                 if(mod(i,nelv/10) .eq. 0) write(*,*) i, 'elements read'
              end if
+             ! elements are stored in global order
+             el_idx = element_offset + i
              ! swap vertices to keep symmetric vertex numbering in neko
-             call msh%add_element(i, p(1), p(2), p(4), p(3))
+             call msh%add_element(i, el_idx, p(1), p(2), p(4), p(3))
           end do
           deallocate(re2v2_data_xy)
        end if
@@ -405,8 +409,10 @@ contains
              if (nelv > 100) then
                 if(mod(i,nelv/100) .eq. 0) write(*,*) i, 'elements read'
              end if
+             ! elements are stored in global order
+             el_idx = element_offset + i
              ! swap vertices to keep symmetric vertex numbering in neko
-             call msh%add_element(i, &
+             call msh%add_element(i, el_idx, &
                   p(1), p(2), p(4), p(3), p(5), p(6), p(8), p(7))
           end do
           deallocate(re2v1_data_xyz)
@@ -424,8 +430,10 @@ contains
              if (nelv > 100) then
                 if(mod(i,nelv/100) .eq. 0) write(*,*) i, 'elements read'
              end if
+             ! elements are stored in global order
+             el_idx = element_offset + i
              ! swap vertices to keep symmetric vertex numbering in neko
-             call msh%add_element(i, &
+             call msh%add_element(i, el_idx, &
                   p(1), p(2), p(4), p(3), p(5), p(6), p(8), p(7))
           end do
           deallocate(re2v2_data_xyz)

@@ -84,6 +84,7 @@ module mesh
      type(htable_i8_t) :: htp   !< Table of unique points (global->local)
      type(htable_i8t4_t) :: htf !< Table of unique faces (facet->local id)
      type(htable_i8t2_t) :: hte !< Table of unique edges (edge->local id)
+     type(htable_i8_t) :: htel  !< Table of unique elements (global->local)
 
      integer(i8), allocatable :: facet_neigh(:,:) !< Facet to neigh. elem. table
 
@@ -297,6 +298,7 @@ contains
     this%facet_type = 0
 
     call this%htp%init(this%npts*this%nelv, i)
+    call this%htel%init(this%nelv, i)
 
     call this%wall%init(this%nelv)
     call this%inlet%init(this%nelv)
@@ -331,8 +333,9 @@ contains
     call this%htp%free()
     call this%htf%free()
     call this%hte%free()
+    call this%htel%free()
     call distdata_free(this%ddata)
-
+    call this%curve%free()
 
     if (allocated(this%dfrmd_el)) then
        deallocate(this%dfrmd_el)
@@ -1400,13 +1403,12 @@ contains
 
 
   !> Add a quadrilateral element to the mesh @a this
-  subroutine mesh_add_quad(this, el, p1, p2, p3, p4)
+  subroutine mesh_add_quad(this, el, el_glb, p1, p2, p3, p4)
     class(mesh_t), target, intent(inout) :: this
     integer, value :: el
+    integer(i8), value :: el_glb
     type(point_t), target, intent(inout) :: p1, p2, p3, p4
-    class(element_t), pointer :: ep
     integer :: p(4)
-    integer(i8) :: el_glb_idx
     type(tuple_i4_t) :: e
 
     ! Connectivity invalidated if a new element is added
@@ -1420,12 +1422,12 @@ contains
     call this%add_point(p3, p(3))
     call this%add_point(p4, p(4))
 
-    ep => this%elements(el)%e
-    el_glb_idx = int(el, i8) + this%offset_el
+    ! Global to local mapping
+    call this%htel%set(el_glb, el)
 
-    select type(ep)
+    select type (ep => this%elements(el)%e)
     type is (quad_t)
-       call ep%init(el_glb_idx, &
+       call ep%init(el_glb, &
             this%points(p(1)), this%points(p(2)), &
             this%points(p(3)), this%points(p(4)))
 
@@ -1437,13 +1439,12 @@ contains
   end subroutine mesh_add_quad
 
   !> Add a hexahedral element to the mesh @a this
-  subroutine mesh_add_hex(this, el, p1, p2, p3, p4, p5, p6, p7, p8)
+  subroutine mesh_add_hex(this, el, el_glb, p1, p2, p3, p4, p5, p6, p7, p8)
     class(mesh_t), target, intent(inout) :: this
     integer, value :: el
+    integer(i8)lue :: el_glb
     type(point_t), target, intent(inout) :: p1, p2, p3, p4, p5, p6, p7, p8
-    class(element_t), pointer :: ep
     integer :: p(8)
-    integer(i8) :: el_glb_idx
     type(tuple4_i4_t) :: f
     type(tuple_i4_t) :: e
 
@@ -1462,11 +1463,12 @@ contains
     call this%add_point(p7, p(7))
     call this%add_point(p8, p(8))
 
-    ep => this%elements(el)%e
-    el_glb_idx = int(el, i8) + this%offset_el
-    select type(ep)
+    ! Global to local mapping
+    call this%htel%set(el_glb, el)
+
+    select type (ep => this%elements(el)%e)
     type is (hex_t)
-       call ep%init(el_glb_idx, &
+       call ep%init(el_glb, &
             this%points(p(1)), this%points(p(2)), &
             this%points(p(3)), this%points(p(4)), &
             this%points(p(5)), this%points(p(6)), &

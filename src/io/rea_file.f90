@@ -79,7 +79,7 @@ contains
     integer :: ndim, nparam, nskip, nlogic, ncurve
     integer :: nelgs, nelgv_i4, i, j, ierr, l, start_el_i4, end_el_i4
     integer :: el_idx
-    integer(i8) :: itmp8, nelgv, start_el, end_el, pt_idx
+    integer(i8) :: itmp8, nelgv, start_el, end_el, pt_idx, el_idx8
     logical :: read_param, read_bcs, read_map
     real(kind=dp) :: xc(8), yc(8), zc(8), curve(5)
     real(kind=dp), allocatable :: bc_data(:,:,:)
@@ -210,8 +210,10 @@ contains
                    p(j) = point_t(real(xc(j),dp), real(yc(j),dp),real(0d0,dp))
                    call rea_file_add_point(htp, p(j), pt_idx)
                 end do
+                ! elements are stored in global order
+                el_idx8 = start_el - 1 + el_idx
                 ! swap vertices to keep symmetric vertex numbering in neko
-                call msh%add_element(el_idx, p(1), p(2), p(4), p(3))
+                call msh%add_element(el_idx, el_idx8, p(1), p(2), p(4), p(3))
              end if
           else if (ndim .eq. 3) then
              read(9, *) (xc(j),j=1,4)
@@ -225,8 +227,10 @@ contains
                    p(j) = point_t(real(xc(j),dp), real(yc(j),dp),real(zc(j),dp))
                    call rea_file_add_point(htp, p(j), pt_idx)
                 end do
+                ! elements are stored in global order
+                el_idx8 = start_el - 1 + el_idx
                 ! swap vertices to keep symmetric vertex numbering in neko
-                call msh%add_element(el_idx, &
+                call msh%add_element(el_idx, el_idx8, &
                      p(1), p(2), p(4), p(3), p(5), p(6), p(8), p(7))
              end if
           end if

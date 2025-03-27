@@ -20,7 +20,7 @@ program genmeshbox
   integer :: argc, gdim = 3
   integer :: el_idx, p_el_idx
   integer :: i, zone_id, e_x, e_y, e_z, ix, iy, iz, e_id
-  integer(i8) :: pt_idx
+  integer(i8) :: pt_idx, el_idx8
   real(kind=dp), allocatable :: el_len_x(:), el_len_y(:), el_len_z(:)
   real(kind=dp), allocatable :: cumm_x(:), cumm_y(:), cumm_z(:)
   type(vector_t) :: dist_x, dist_y, dist_z
@@ -108,11 +108,11 @@ program genmeshbox
         if (.not. file_exists) then
 
            open(unit=10, file=trim(log_fname), status = 'new', action = 'write')
-           write (10, '(A,2(F10.6," "),I4,L2)') "xmin, xmax, Nel, periodic:", &
+           write (10, '(A,2(F12.6," "),I4,L2)') "xmin, xmax, Nel, periodic:", &
                 x0, x1, nelx, period_x
-           write (10, '(A,2(F10.6," "),I4,L2)') "ymin, ymax, Nel, periodic:", &
+           write (10, '(A,2(F12.6," "),I4,L2)') "ymin, ymax, Nel, periodic:", &
                 y0, y1, nely, period_y
-           write (10, '(A,2(F10.6," "),I4,L2)') "zmin, zmax, Nel, periodic:", &
+           write (10, '(A,2(F12.6," "),I4,L2)') "zmin, zmax, Nel, periodic:", &
                 z0, z1, nelz, period_z
            close(10)
            exit
@@ -211,8 +211,9 @@ program genmeshbox
                  end do
               end do
            end do
-           call msh%add_element(i, p(1,1,1), p(2,1,1),p(1,2,1),p(2,2,1),&
-                p(1,1,2), p(2,1,2), p(1,2,2), p(2,2,2))
+           el_idx8 = i
+           call msh%add_element(i, el_idx8, p(1,1,1), p(2,1,1), p(1,2,1),&
+                & p(2,2,1), p(1,1,2), p(2,1,2), p(1,2,2), p(2,2,2))
            i = i + 1
         end do
      end do

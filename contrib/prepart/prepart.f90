@@ -6,6 +6,7 @@ program prepart
   type(mesh_t) :: msh, new_msh
   type(file_t) :: new_msh_file, nmsh_file
   integer :: argc, nprts, i, j, tmp, sum, idx, p_idx, rank, label
+  integer(i8) :: idx8
   integer, allocatable :: new_el(:), idx_cntr(:), idx_map(:)
   type(mesh_fld_t) :: parts
 
@@ -16,7 +17,7 @@ program prepart
      stop
   end if
 
-  call neko_init 
+  call neko_init
 
   call get_command_argument(1, fname)
   call get_command_argument(2, nprtschr)
@@ -60,13 +61,14 @@ program prepart
   !
 
   new_msh%lgenc = .false.
-  call new_msh%init(msh%gdim, msh%nelv)  
+  call new_msh%init(msh%gdim, msh%nelv)
   do i = 1, msh%nelv
-     rank = parts%data(i)     
+     rank = parts%data(i)
      idx = idx_cntr(rank) + new_el(rank)
      idx_cntr(rank) = idx_cntr(rank) + 1
      idx_map(i) = idx
-     call new_msh%add_element(idx, &
+     idx8 = msh%elements(i)%e%id()
+     call new_msh%add_element(idx, idx8, &
                               msh%elements(i)%e%pts(1)%p, &
                               msh%elements(i)%e%pts(2)%p, &
                               msh%elements(i)%e%pts(3)%p, &
@@ -83,7 +85,7 @@ program prepart
 
   !
   ! Add zones
-  ! 
+  !
   do i = 1, msh%wall%size
      idx = idx_map(msh%wall%facet_el(i)%x(2))
      call new_msh%mark_wall_facet(msh%wall%facet_el(i)%x(1), idx)
@@ -97,6 +99,12 @@ program prepart
   do i = 1, msh%outlet%size
      idx = idx_map(msh%outlet%facet_el(i)%x(2))
      call new_msh%mark_outlet_facet(msh%outlet%facet_el(i)%x(1), idx)
+  end do
+
+  do i = 1, msh%outlet_normal%size
+     idx = idx_map(msh%outlet_normal%facet_el(i)%x(2))
+     call new_msh%mark_outlet_normal_facet(msh%outlet_normal%facet_el(i)%x(1), &
+                                           idx)
   end do
 
   do i = 1, msh%sympln%size
@@ -119,21 +127,27 @@ program prepart
                                         idx, label)
      end do
   end do
-  
+
   do i = 1, msh%periodic%size
      idx = idx_map(msh%periodic%facet_el(i)%x(2))
      p_idx = idx_map(msh%periodic%p_facet_el(i)%x(2))
      call new_msh%apply_periodic_facet(msh%periodic%facet_el(i)%x(1), idx, &
           msh%periodic%p_facet_el(i)%x(1), p_idx, msh%periodic%p_ids(i)%x)
   end do
-  
+
+  do i = 1, msh%curve%size
+     idx = idx_map(msh%curve%curve_el(i)%el_idx)
+     call new_msh%mark_curve_element(idx, msh%curve%curve_el(i)%curve_data, &
+                                     msh%curve%curve_el(i)%curve_type)
+  end do
+
   call new_msh%finalize()
-  
+
   deallocate(idx_map)
   call msh%free()
 
   output_ = trim(fname(1:scan(trim(fname), &
-       '.', back=.true.) - 1))//'_'//trim(nprtschr)//'.nmsh' 
+       '.', back=.true.) - 1))//'_'//trim(nprtschr)//'.nmsh'
 
   new_msh_file = file_t(output_)
   call new_msh_file%write(new_msh)
