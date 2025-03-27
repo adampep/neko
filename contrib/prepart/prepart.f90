@@ -17,7 +17,7 @@ program prepart
      stop
   end if
 
-  call neko_init
+  call neko_init()
 
   call get_command_argument(1, fname)
   call get_command_argument(2, nprtschr)
@@ -69,14 +69,14 @@ program prepart
      idx_map(i) = idx
      idx8 = msh%elements(i)%e%id()
      call new_msh%add_element(idx, idx8, &
-                              msh%elements(i)%e%pts(1)%p, &
-                              msh%elements(i)%e%pts(2)%p, &
-                              msh%elements(i)%e%pts(3)%p, &
-                              msh%elements(i)%e%pts(4)%p, &
-                              msh%elements(i)%e%pts(5)%p, &
-                              msh%elements(i)%e%pts(6)%p, &
-                              msh%elements(i)%e%pts(7)%p, &
-                              msh%elements(i)%e%pts(8)%p)
+          msh%elements(i)%e%pts(1)%p, &
+          msh%elements(i)%e%pts(2)%p, &
+          msh%elements(i)%e%pts(3)%p, &
+          msh%elements(i)%e%pts(4)%p, &
+          msh%elements(i)%e%pts(5)%p, &
+          msh%elements(i)%e%pts(6)%p, &
+          msh%elements(i)%e%pts(7)%p, &
+          msh%elements(i)%e%pts(8)%p)
 
   end do
 
@@ -86,31 +86,6 @@ program prepart
   !
   ! Add zones
   !
-  do i = 1, msh%wall%size
-     idx = idx_map(msh%wall%facet_el(i)%x(2))
-     call new_msh%mark_wall_facet(msh%wall%facet_el(i)%x(1), idx)
-  end do
-
-  do i = 1, msh%inlet%size
-     idx = idx_map(msh%inlet%facet_el(i)%x(2))
-     call new_msh%mark_inlet_facet(msh%inlet%facet_el(i)%x(1), idx)
-  end do
-
-  do i = 1, msh%outlet%size
-     idx = idx_map(msh%outlet%facet_el(i)%x(2))
-     call new_msh%mark_outlet_facet(msh%outlet%facet_el(i)%x(1), idx)
-  end do
-
-  do i = 1, msh%outlet_normal%size
-     idx = idx_map(msh%outlet_normal%facet_el(i)%x(2))
-     call new_msh%mark_outlet_normal_facet(msh%outlet_normal%facet_el(i)%x(1), &
-                                           idx)
-  end do
-
-  do i = 1, msh%sympln%size
-     idx = idx_map(msh%sympln%facet_el(i)%x(2))
-     call new_msh%mark_sympln_facet(msh%sympln%facet_el(i)%x(1), idx)
-  end do
 
   do i = 1, msh%periodic%size
      idx = idx_map(msh%periodic%facet_el(i)%x(2))
@@ -124,7 +99,7 @@ program prepart
         idx = idx_map(msh%labeled_zones(j)%facet_el(i)%x(2))
         label = j ! adhere to standards...
         call new_msh%mark_labeled_facet(msh%labeled_zones(j)%facet_el(i)%x(1), &
-                                        idx, label)
+             idx, label)
      end do
   end do
 
@@ -138,7 +113,7 @@ program prepart
   do i = 1, msh%curve%size
      idx = idx_map(msh%curve%curve_el(i)%el_idx)
      call new_msh%mark_curve_element(idx, msh%curve%curve_el(i)%curve_data, &
-                                     msh%curve%curve_el(i)%curve_type)
+          msh%curve%curve_el(i)%curve_type)
   end do
 
   call new_msh%finalize()
@@ -146,8 +121,8 @@ program prepart
   deallocate(idx_map)
   call msh%free()
 
-  output_ = trim(fname(1:scan(trim(fname), &
-       '.', back=.true.) - 1))//'_'//trim(nprtschr)//'.nmsh'
+  output_ = trim(fname(1:scan(trim(fname), '.', back = .true.) - 1)) // &
+       '_' // trim(nprtschr) // '.nmsh'
 
   new_msh_file = file_t(output_)
   call new_msh_file%write(new_msh)

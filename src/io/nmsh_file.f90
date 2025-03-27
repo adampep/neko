@@ -196,14 +196,6 @@ contains
              el_idx_glb = int(nmsh_zone(i)%e, i8)
              if (msh%htel%get(el_idx_glb, el_idx) .eq. 0) then
                 select case (nmsh_zone(i)%type)
-                case (1)
-                   call msh%mark_wall_facet(nmsh_zone(i)%f, el_idx)
-                case (2)
-                   call msh%mark_inlet_facet(nmsh_zone(i)%f, el_idx)
-                case (3)
-                   call msh%mark_outlet_facet(nmsh_zone(i)%f, el_idx)
-                case (4)
-                   call msh%mark_sympln_facet(nmsh_zone(i)%f, el_idx)
                 case (5)
                    
                    ! THIS NOT DONE YET
@@ -212,8 +204,6 @@ contains
                         nmsh_zone(i)%glb_pt_ids)
                    ! THIS NOT DONE YET
                    
-                case (6)
-                   call msh%mark_outlet_normal_facet(nmsh_zone(i)%f, el_idx)
                 case (7)
                    call msh%mark_labeled_facet(nmsh_zone(i)%f, el_idx, &
                         nmsh_zone(i)%p_f)
@@ -379,14 +369,6 @@ contains
           el_idx_glb = int(nmsh_zone(i)%e, i8)
           if (msh%htel%get(el_idx_glb, el_idx) .eq. 0) then
              select case (nmsh_zone(i)%type)
-             case (1)
-                call msh%mark_wall_facet(nmsh_zone(i)%f, el_idx)
-             case (2)
-                call msh%mark_inlet_facet(nmsh_zone(i)%f, el_idx)
-             case (3)
-                call msh%mark_outlet_facet(nmsh_zone(i)%f, el_idx)
-             case (4)
-                call msh%mark_sympln_facet(nmsh_zone(i)%f, el_idx)
              case (5)
                 
                 ! THIS NOT DONE YET
@@ -410,8 +392,6 @@ contains
                      nmsh_zone(i)%p_f, nmsh_zone(i)%p_e, ids)
                 ! THIS NOT DONE YET
                 
-             case (6)
-                call msh%mark_outlet_normal_facet(nmsh_zone(i)%f, el_idx)
              case (7)
                 call msh%mark_labeled_facet(nmsh_zone(i)%f, el_idx, &
                      nmsh_zone(i)%p_f)
@@ -519,8 +499,8 @@ contains
     integer :: ncurves, ncurves_glb, ncurves_offset
     integer :: el_idx, el_idx_glb
     class(element_t), pointer :: ep
-    integer(i4), dimension(8), parameter :: vcyc_to_sym = [1, 2, 4, 3, 5, &
-         6, 8, 7] ! cyclic to symmetric vertex mapping
+    integer(i4), dimension(8), parameter :: vcyc_to_sym = &
+         [1, 2, 4, 3, 5, 6, 8, 7] ! cyclic to symmetric vertex mapping
 
     select type (data)
     type is (mesh_t)
@@ -595,8 +575,7 @@ contains
        call neko_error('Invalid dimension of mesh')
     end if
 
-    nzones = msh%wall%size + msh%inlet%size + msh%outlet%size + &
-         msh%sympln%size + msh%periodic%size + msh%outlet_normal%size
+    nzones = msh%periodic%size
     do i = 1, NEKO_MSH_MAX_ZLBLS
        nzones = nzones + msh%labeled_zones(i)%size
     end do
@@ -619,38 +598,6 @@ contains
           nmsh_zone(:)%type = 0
 
           j = 1
-          do i = 1, msh%wall%size
-             nmsh_zone(j)%e = &
-                  int(msh%elements(msh%wall%facet_el(i)%x(2))%e%id(), i4)
-             nmsh_zone(j)%f = msh%wall%facet_el(i)%x(1)
-             nmsh_zone(j)%type = 1
-             j = j + 1
-          end do
-
-          do i = 1, msh%inlet%size
-             nmsh_zone(j)%e = &
-                  int(msh%elements(msh%inlet%facet_el(i)%x(2))%e%id(), i4)
-             nmsh_zone(j)%f = msh%inlet%facet_el(i)%x(1)
-             nmsh_zone(j)%type = 2
-             j = j + 1
-          end do
-
-          do i = 1, msh%outlet%size
-             nmsh_zone(j)%e = &
-                  int(msh%elements(msh%outlet%facet_el(i)%x(2))%e%id(), i4)
-             nmsh_zone(j)%f = msh%outlet%facet_el(i)%x(1)
-             nmsh_zone(j)%type = 3
-             j = j + 1
-          end do
-
-          do i = 1, msh%sympln%size
-             nmsh_zone(j)%e = &
-                  int(msh%elements(msh%sympln%facet_el(i)%x(2))%e%id(), i4)
-             nmsh_zone(j)%f = msh%sympln%facet_el(i)%x(1)
-             nmsh_zone(j)%type = 4
-             j = j + 1
-          end do
-
           do i = 1, msh%periodic%size
              
              ! THIS NOT DONE YET
@@ -663,14 +610,6 @@ contains
              j = j + 1
              ! THIS NOT DONE YET
              
-          end do
-
-          do i = 1, msh%outlet_normal%size
-             nmsh_zone(j)%e = &
-                int(msh%elements(msh%outlet_normal%facet_el(i)%x(2))%e%id(), i4)
-             nmsh_zone(j)%f = msh%outlet_normal%facet_el(i)%x(1)
-             nmsh_zone(j)%type = 6
-             j = j + 1
           end do
 
           do k = 1, NEKO_MSH_MAX_ZLBLS

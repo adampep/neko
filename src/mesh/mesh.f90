@@ -61,32 +61,32 @@ module mesh
      class(element_t), allocatable :: e
   end type mesh_element_t
 
-  type, public ::  mesh_t
-     integer :: nelv            !< Number of elements
-     integer :: npts            !< Number of points per element
-     integer :: gdim            !< Geometric dimension
-     integer :: mpts            !< Number of (unique) points in the mesh
-     integer :: mfcs            !< Number of (unique) faces in the mesh
-     integer :: meds            !< Number of (unique) edges in the mesh
+  type, public :: mesh_t
+     integer :: nelv !< Number of elements
+     integer :: npts !< Number of points per element
+     integer :: gdim !< Geometric dimension
+     integer :: mpts !< Number of (unique) points in the mesh
+     integer :: mfcs !< Number of (unique) faces in the mesh
+     integer :: meds !< Number of (unique) edges in the mesh
 
-     integer(i8) :: glb_nelv        !< Global number of elements
-     integer(i8) :: glb_mpts        !< Global number of unique points
-     integer(i8) :: glb_mfcs        !< Global number of unique faces
-     integer(i8) :: glb_meds        !< Global number of unique edges
+     integer(i8) :: glb_nelv !< Global number of elements
+     integer(i8) :: glb_mpts !< Global number of unique points
+     integer(i8) :: glb_mfcs !< Global number of unique faces
+     integer(i8) :: glb_meds !< Global number of unique edges
 
-     integer(i8) :: offset_el       !< Element offset
-     integer(i8) :: max_pts_id      !< Max local point id
+     integer(i8) :: offset_el !< Element offset
+     integer(i8) :: max_pts_id !< Max local point id
 
      type(point_t), allocatable :: points(:) !< list of points
      type(mesh_element_t), allocatable :: elements(:) !< List of elements
      logical, allocatable :: dfrmd_el(:) !< List of elements
 
-     type(htable_i8_t) :: htp   !< Table of unique points (global->local)
+     type(htable_i8_t) :: htp !< Table of unique points (global->local)
      type(htable_i8t4_t) :: htf !< Table of unique faces (facet->local id)
      type(htable_i8t2_t) :: hte !< Table of unique edges (edge->local id)
-     type(htable_i8_t) :: htel  !< Table of unique elements (global->local)
+     type(htable_i8_t) :: htel !< Table of unique elements (global->local)
 
-     integer(i8), allocatable :: facet_neigh(:,:) !< Facet to neigh. elem. table
+     integer(i8), allocatable :: facet_neigh(:,:) !< Facet to neigh. element table
 
      !> Facet to element's id tuple and the mapping of the
      !! points between lower id element and higher
@@ -94,29 +94,24 @@ module mesh
      class(htable_t), allocatable :: facet_map
      type(stack_i8_t), allocatable :: point_neigh(:) !< Point to neigh. table
 
-     type(distdata_t) :: ddata            !< Mesh distributed data
-     logical, allocatable :: neigh(:)     !< Neighbouring ranks
+     type(distdata_t) :: ddata !< Mesh distributed data
+     logical, allocatable :: neigh(:) !< Neighbouring ranks
      integer, allocatable :: neigh_order(:) !< Neighbour order
 
      integer(2), allocatable :: facet_type(:,:) !< Facet type
 
-     type(facet_zone_t) :: wall                 !< Zone of wall facets
-     type(facet_zone_t) :: inlet                !< Zone of inlet facets
-     type(facet_zone_t) :: outlet               !< Zone of outlet facets
-     type(facet_zone_t) :: outlet_normal        !< Zone of outlet normal facets
-     type(facet_zone_t) :: sympln               !< Zone of symmetry plane facets
      type(facet_zone_t), allocatable :: labeled_zones(:) !< Zones with labeled facets
-     type(facet_zone_periodic_t) :: periodic             !< Zones with periodic facets
-     type(curve_t) :: curve                        !< Set of curved elements
+     type(facet_zone_periodic_t) :: periodic !< Zones with periodic facets
+     type(curve_t) :: curve !< Set of curved elements
 
-     logical :: lconn = .false.                !< valid connectivity
-     logical :: ldist = .false.                !< valid distributed data
-     logical :: lnumr = .false.                !< valid numbering
-     logical :: lgenc = .true.                 !< generate connectivity
+     logical :: lconn = .false. !< valid connectivity
+     logical :: ldist = .false. !< valid distributed data
+     logical :: lnumr = .false. !< valid numbering
+     logical :: lgenc = .true. !< generate connectivity
 
      !> enables user to specify a deformation
      !! that is applied to all x,y,z coordinates generated with this mesh
-     procedure(mesh_deform), pass(msh), pointer  :: apply_deform => null()
+     procedure(mesh_deform), pass(msh), pointer :: apply_deform => null()
    contains
      procedure, private, pass(this) :: init_nelv => mesh_init_nelv
      procedure, private, pass(this) :: init_dist => mesh_init_dist
@@ -135,13 +130,7 @@ module mesh
      procedure, private, pass(this) :: is_shared_facet => mesh_is_shared_facet
      procedure, pass(this) :: free => mesh_free
      procedure, pass(this) :: finalize => mesh_finalize
-     procedure, pass(this) :: mark_wall_facet => mesh_mark_wall_facet
-     procedure, pass(this) :: mark_inlet_facet => mesh_mark_inlet_facet
-     procedure, pass(this) :: mark_outlet_facet => mesh_mark_outlet_facet
-     procedure, pass(this) :: mark_sympln_facet => mesh_mark_sympln_facet
      procedure, pass(this) :: mark_periodic_facet => mesh_mark_periodic_facet
-     procedure, pass(this) :: mark_outlet_normal_facet => &
-          mesh_mark_outlet_normal_facet
      procedure, pass(this) :: mark_labeled_facet => mesh_mark_labeled_facet
      procedure, pass(this) :: mark_curve_element => mesh_mark_curve_element
      procedure, pass(this) :: apply_periodic_facet => mesh_apply_periodic_facet
@@ -184,8 +173,8 @@ contains
   !> Initialise a mesh @a this with @a nelv elements
   subroutine mesh_init_nelv(this, gdim, nelv)
     class(mesh_t), intent(inout) :: this !< Mesh
-    integer, intent(in) :: gdim          !< Geometric dimension
-    integer, intent(in) :: nelv          !< Local number of elements
+    integer, intent(in) :: gdim !< Geometric dimension
+    integer, intent(in) :: nelv !< Local number of elements
     integer :: ierr
     integer(i8) :: itmp8
     character(len=LOG_SIZE) :: log_buf
@@ -215,8 +204,8 @@ contains
 
   !> Initialise a mesh @a this based on a distribution @a dist
   subroutine mesh_init_dist(this, gdim, dist)
-    class(mesh_t), intent(inout) :: this    !< Mesh
-    integer, intent(in) :: gdim             !< Geometric dimension
+    class(mesh_t), intent(inout) :: this !< Mesh
+    integer, intent(in) :: gdim !< Geometric dimension
     type(linear_dist_t), intent(in) :: dist !< Data distribution
     character(len=LOG_SIZE) :: log_buf
 
@@ -300,11 +289,6 @@ contains
     call this%htp%init(this%npts*this%nelv, i)
     call this%htel%init(this%nelv, i)
 
-    call this%wall%init(this%nelv)
-    call this%inlet%init(this%nelv)
-    call this%outlet%init(this%nelv)
-    call this%outlet_normal%init(this%nelv)
-    call this%sympln%init(this%nelv)
     call this%periodic%init(this%nelv)
 
     allocate(this%labeled_zones(NEKO_MSH_MAX_ZLBLS))
@@ -392,11 +376,6 @@ contains
        deallocate(this%points)
     end if
 
-    call this%wall%free()
-    call this%inlet%free()
-    call this%outlet%free()
-    call this%outlet_normal%free()
-    call this%sympln%free()
     call this%periodic%free()
     this%lconn = .false.
     this%lnumr = .false.
@@ -412,11 +391,6 @@ contains
     call mesh_generate_flags(this)
     call mesh_generate_conn(this)
 
-    call this%wall%finalize()
-    call this%inlet%finalize()
-    call this%outlet%finalize()
-    call this%outlet_normal%finalize()
-    call this%sympln%finalize()
     call this%periodic%finalize()
     do i = 1, NEKO_MSH_MAX_ZLBLS
        call this%labeled_zones(i)%finalize()
@@ -550,7 +524,7 @@ contains
                 call this%elements(i)%e%facet_id(edge, j)
 
                 ! Assume that all facets are on the exterior
-                facet_data%x = (/ 0_i8, 0_i8/)
+                facet_data%x = [0_i8, 0_i8]
 
                 !check it this face has shown up earlier
                 if (fmp%get(edge, facet_data) .eq. 0) then
@@ -594,7 +568,7 @@ contains
                    if (facet_data%x(1) .eq. el_glb_idx ) then
                       this%facet_neigh(j, i) = facet_data%x(2)
                       call this%elements(i)%e%facet_id(face_comp, &
-                                                      j+(2*mod(j,2)-1))
+                           j + (2*mod(j, 2) - 1))
                       if (face_comp .eq. face) then
                          facet_data%x(2) = el_glb_idx
                          this%facet_neigh(j, i) = facet_data%x(1)
@@ -682,7 +656,7 @@ contains
   subroutine mesh_generate_external_facet_conn(this)
     type(mesh_t), intent(inout) :: this
     type(tuple_i4_t) :: edge, edge2
-    type(tuple4_i4_t) :: face,  face2
+    type(tuple4_i4_t) :: face, face2
     type(tuple_i4_t) :: facet_data
     type(stack_i4_t) :: buffer
     type(MPI_Status) :: status
@@ -707,7 +681,7 @@ contains
     do i = 1, this%nelv
        el_glb_idx = i + this%offset_el
        do j = 1, n_sides
-          facet = j             ! Adhere to standards...
+          facet = j ! Adhere to standards...
           if (this%facet_neigh(j, i) .eq. 0) then
              if (n_nodes .eq. 2) then
                 call this%elements(i)%e%facet_id(edge, j)
@@ -952,7 +926,7 @@ contains
 
     num_edge_glb = 2* int(this%meds, i8)
     call MPI_Allreduce(MPI_IN_PLACE, num_edge_glb, 1, &
-         MPI_INTEGER8, MPI_SUM, NEKO_COMM,  ierr)
+         MPI_INTEGER8, MPI_SUM, NEKO_COMM, ierr)
 
     glb_max = num_edge_glb
 
@@ -1078,9 +1052,9 @@ contains
           call distdata_set_local_to_global_edge(this%ddata, id, shared_offset)
 
           ! Add new number to send data as [old_glb_id new_glb_id] for each edge
-          call send_buff%push(glb_ptr)    ! Old glb_id integer*8
+          call send_buff%push(glb_ptr) ! Old glb_id integer*8
           glb_id = int(shared_offset, i8) ! Waste some space here...
-          call send_buff%push(glb_id)     ! New glb_id integer*4
+          call send_buff%push(glb_id) ! New glb_id integer*4
 
           shared_offset = shared_offset + 1
        else
@@ -1135,7 +1109,7 @@ contains
                 if (glb_to_loc%get(recv_buff(j), id) .eq. 0) then
                    n_glb_id = int(recv_buff(j + 1 ), 4)
                    call distdata_set_local_to_global_edge(this%ddata, id, &
-                                                          n_glb_id)
+                        n_glb_id)
                 else
                    call neko_error('Invalid edge id')
                 end if
@@ -1271,7 +1245,7 @@ contains
 
     if (this%gdim .eq. 2) then
 
-       if (owned_facets .gt. 32)  then
+       if (owned_facets .gt. 32) then
           call send_buff%init(owned_facets)
        else
           call send_buff%init()
@@ -1281,7 +1255,7 @@ contains
        do i = 1, edge_owner%size()
           if (this%hte%get(ed(i), id) .eq. 0) then
              call distdata_set_local_to_global_facet(this%ddata, id, &
-                                                     shared_offset)
+                  shared_offset)
 
              ! Add new number to send buffer
              ! [edge id1 ... edge idn new_glb_id]
@@ -1296,7 +1270,7 @@ contains
 
     else
 
-       if (owned_facets .gt. 32)  then
+       if (owned_facets .gt. 32) then
           call send_buff%init(owned_facets)
        else
           call send_buff%init()
@@ -1306,7 +1280,7 @@ contains
        do i = 1, face_owner%size()
           if (this%htf%get(fd(i), id) .eq. 0) then
              call distdata_set_local_to_global_facet(this%ddata, id, &
-                                                     shared_offset)
+                  shared_offset)
 
              ! Add new number to send buffer
              ! [face id1 ... face idn new_glb_id]
@@ -1529,25 +1503,6 @@ contains
 
   end subroutine mesh_add_edge
 
-  !> Mark facet @a f in element @a e as a wall
-  subroutine mesh_mark_wall_facet(this, f, e)
-    class(mesh_t), intent(inout) :: this
-    integer, intent(inout) :: f
-    integer, intent(inout) :: e
-
-    if (e .gt. this%nelv) then
-       call neko_error('Invalid element index')
-    end if
-
-    if ((this%gdim .eq. 2 .and. f .gt. 4) .or. &
-         (this%gdim .eq. 3 .and. f .gt. 6)) then
-       call neko_error('Invalid facet index')
-    end if
-    this%facet_type(f, e) = 2
-    call this%wall%add_facet(f, e)
-
-  end subroutine mesh_mark_wall_facet
-
   !> Mark element @a e as a curve element
   subroutine mesh_mark_curve_element(this, e, curve_data, curve_type)
     class(mesh_t), intent(inout) :: this
@@ -1564,26 +1519,6 @@ contains
     call this%curve%add_element(e, curve_data, curve_type)
 
   end subroutine mesh_mark_curve_element
-
-
-  !> Mark facet @a f in element @a e as an inlet
-  subroutine mesh_mark_inlet_facet(this, f, e)
-    class(mesh_t), intent(inout) :: this
-    integer, intent(in) :: f
-    integer, intent(in) :: e
-
-    if (e .gt. this%nelv) then
-       call neko_error('Invalid element index')
-    end if
-
-    if ((this%gdim .eq. 2 .and. f .gt. 4) .or. &
-         (this%gdim .eq. 3 .and. f .gt. 6)) then
-       call neko_error('Invalid facet index')
-    end if
-    this%facet_type(f, e) = 2
-    call this%inlet%add_facet(f, e)
-
-  end subroutine mesh_mark_inlet_facet
 
   !> Mark facet @a f in element @a e with label
   subroutine mesh_mark_labeled_facet(this, f, e, label)
@@ -1604,65 +1539,6 @@ contains
     this%facet_type(f,e) = -label
 
   end subroutine mesh_mark_labeled_facet
-
-
-  !> Mark facet @a f in element @a e as an outlet normal
-  subroutine mesh_mark_outlet_normal_facet(this, f, e)
-    class(mesh_t), intent(inout) :: this
-    integer, intent(inout) :: f
-    integer, intent(inout) :: e
-
-    if (e .gt. this%nelv) then
-       call neko_error('Invalid element index')
-    end if
-
-    if ((this%gdim .eq. 2 .and. f .gt. 4) .or. &
-         (this%gdim .eq. 3 .and. f .gt. 6)) then
-       call neko_error('Invalid facet index')
-    end if
-    this%facet_type(f, e) = 1
-    call this%outlet_normal%add_facet(f, e)
-
-  end subroutine mesh_mark_outlet_normal_facet
-
-
-  !> Mark facet @a f in element @a e as an outlet
-  subroutine mesh_mark_outlet_facet(this, f, e)
-    class(mesh_t), intent(inout) :: this
-    integer, intent(inout) :: f
-    integer, intent(inout) :: e
-
-    if (e .gt. this%nelv) then
-       call neko_error('Invalid element index')
-    end if
-
-    if ((this%gdim .eq. 2 .and. f .gt. 4) .or. &
-         (this%gdim .eq. 3 .and. f .gt. 6)) then
-       call neko_error('Invalid facet index')
-    end if
-    this%facet_type(f, e) = 1
-    call this%outlet%add_facet(f, e)
-
-  end subroutine mesh_mark_outlet_facet
-
-  !> Mark facet @a f in element @a e as a symmetry plane
-  subroutine mesh_mark_sympln_facet(this, f, e)
-    class(mesh_t), intent(inout) :: this
-    integer, intent(inout) :: f
-    integer, intent(inout) :: e
-
-    if (e .gt. this%nelv) then
-       call neko_error('Invalid element index')
-    end if
-
-    if ((this%gdim .eq. 2 .and. f .gt. 4) .or. &
-         (this%gdim .eq. 3 .and. f .gt. 6)) then
-       call neko_error('Invalid facet index')
-    end if
-    this%facet_type(f, e) = 2
-    call this%sympln%add_facet(f, e)
-
-  end subroutine mesh_mark_sympln_facet
 
   !> Mark facet @a f in element @a e as periodic with (@a pf, @a pe)
   subroutine mesh_mark_periodic_facet(this, f, e, pf, pe, pids)
@@ -1711,18 +1587,20 @@ contains
     integer :: pe
     integer :: org_ids(4), pids(4)
     type(point_t), pointer :: pi
-    integer, dimension(4, 6) :: face_nodes = reshape((/1,5,7,3,&
-                                                       2,6,8,4,&
-                                                       1,2,6,5,&
-                                                       3,4,8,7,&
-                                                       1,2,4,3,&
-                                                       5,6,8,7/),&
-                                                       (/4,6/))
-    integer, dimension(2, 4) :: edge_nodes = reshape((/1,3,&
-                                                       2,4,&
-                                                       1,2,&
-                                                       3,4 /),&
-                                                       (/2,4/))
+    integer, dimension(4, 6) :: face_nodes = reshape([ &
+         1,5,7,3, &
+         2,6,8,4, &
+         1,2,6,5, &
+         3,4,8,7, &
+         1,2,4,3, &
+         5,6,8,7],&
+         [4,6])
+    integer, dimension(2, 4) :: edge_nodes = reshape([ &
+         1,3, &
+         2,4, &
+         1,2, &
+         3,4],&
+         [2,4])
 
     do i = 1, this%periodic%size
        e = this%periodic%facet_el(i)%x(2)
@@ -1764,18 +1642,20 @@ contains
     integer :: i, j, id, p_local_idx, match
     type(tuple4_i4_t) :: ft
     type(tuple_i4_t) :: et
-    integer, dimension(4, 6) :: face_nodes = reshape((/1,5,7,3,&
-                                                       2,6,8,4,&
-                                                       1,2,6,5,&
-                                                       3,4,8,7,&
-                                                       1,2,4,3,&
-                                                       5,6,8,7/),&
-                                                       (/4,6/))
-    integer, dimension(2, 4) :: edge_nodes = reshape((/1,3,&
-                                                       2,4,&
-                                                       1,2,&
-                                                       3,4 /),&
-                                                      (/2,4/))
+    integer, dimension(4, 6) :: face_nodes = reshape([&
+         1,5,7,3,&
+         2,6,8,4,&
+         1,2,6,5,&
+         3,4,8,7,&
+         1,2,4,3,&
+         5,6,8,7],&
+         [4,6])
+    integer, dimension(2, 4) :: edge_nodes = reshape([&
+         1,3,&
+         2,4,&
+         1,2,&
+         3,4 ],&
+         [2,4])
 
     select type(ele => this%elements(e)%e)
     type is(hex_t)
@@ -1784,7 +1664,7 @@ contains
           L = 0d0
           do i = 1, 4
              L = L + ele%pts(face_nodes(i,f))%p%x(1:3) - &
-               elp%pts(face_nodes(i,pf))%p%x(1:3)
+                  elp%pts(face_nodes(i,pf))%p%x(1:3)
           end do
           L = L/4
           do i = 1, 4
@@ -1813,7 +1693,7 @@ contains
           L = 0d0
           do i = 1, 2
              L = L + ele%pts(edge_nodes(i,f))%p%x(1:3) - &
-               elp%pts(edge_nodes(i,pf))%p%x(1:3)
+                  elp%pts(edge_nodes(i,pf))%p%x(1:3)
           end do
           L = L/2
           do i = 1, 2
@@ -1846,13 +1726,14 @@ contains
     integer :: i, id, p_local_idx
     type(tuple4_i4_t) :: ft
     type(tuple_i4_t) :: et
-    integer, dimension(4, 6) :: face_nodes = reshape((/1,5,7,3,&
-                                                       2,6,8,4,&
-                                                       1,2,6,5,&
-                                                       3,4,8,7,&
-                                                       1,2,4,3,&
-                                                       5,6,8,7/),&
-                                                       (/4,6/))
+    integer, dimension(4, 6) :: face_nodes = reshape([&
+         1,5,7,3,&
+         2,6,8,4,&
+         1,2,6,5,&
+         3,4,8,7,&
+         1,2,4,3,&
+         5,6,8,7],&
+         [4,6])
     select type(ele => this%elements(e)%e)
     type is(hex_t)
        do i = 1, 4
@@ -1946,7 +1827,7 @@ contains
   !! @todo Consider moving this to distdata
   function mesh_have_point_glb_idx(this, index) result(local_id)
     class(mesh_t), intent(inout) :: this
-    integer(i8), intent(inout) :: index  !< Global index
+    integer(i8), intent(inout) :: index !< Global index
     integer :: local_id
 
     if (this%htp%get(index, local_id) .eq. 1) then
