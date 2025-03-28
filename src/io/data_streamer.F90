@@ -93,7 +93,7 @@ contains
 
     ! For now streaming supports msh%glb_nelv bounded by integer4
     if (nelgv > huge(nelv)) &
-         & call neko_error('Streaming does not support int8 for element count')
+         call neko_error('Streaming does not support int8 for element count')
 
 #ifdef HAVE_ADIOS2
     call fortran_adios2_initialize(npts, nelv, nelb, nelgv, gdim, NEKO_COMM)

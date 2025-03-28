@@ -82,7 +82,7 @@ contains
 
     ! For now hdf5 supports msh%glb_nelv bounded by integer4
     if (msh%glb_nelv > huge(glb_nelv_i4)) &
-         & call neko_error('HDF5 does not support int8 for element count')
+         call neko_error('HDF5 does not support int8 for element count')
     glb_nelv_i4 = int(msh%glb_nelv, i4)
 
     call hdf5_file_determine_data(data, msh, dof, fp, fsp, dtlag, tlag)
@@ -107,7 +107,7 @@ contains
 
     if (present(t)) then
        call h5acreate_f(file_id, "Time", H5T_NATIVE_DOUBLE, filespace, &
-            & attr_id, ierr, h5p_default_f, h5p_default_f)
+            attr_id, ierr, h5p_default_f, h5p_default_f)
        call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, t, ddim, ierr)
        call h5aclose_f(attr_id, ierr)
     end if
@@ -124,12 +124,12 @@ contains
             gcpl_id=h5p_default_f, gapl_id=h5p_default_f)
 
        call h5acreate_f(grp_id, "Elements", H5T_NATIVE_INTEGER, filespace, &
-            & attr_id, ierr, h5p_default_f, h5p_default_f)
+            attr_id, ierr, h5p_default_f, h5p_default_f)
        call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, glb_nelv_i4, ddim, ierr)
        call h5aclose_f(attr_id, ierr)
 
        call h5acreate_f(grp_id, "Dimension", H5T_NATIVE_INTEGER, filespace, &
-            & attr_id, ierr, h5p_default_f, h5p_default_f)
+            attr_id, ierr, h5p_default_f, h5p_default_f)
        call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, msh%gdim, ddim, ierr)
        call h5aclose_f(attr_id, ierr)
 
@@ -144,8 +144,8 @@ contains
     !
     if (associated(tlag) .and. associated(dtlag)) then
        call h5gcreate_f(file_id, "Restart", grp_id, ierr, &
-            & lcpl_id=h5p_default_f, gcpl_id=h5p_default_f, &
-            & gapl_id=h5p_default_f)
+            lcpl_id=h5p_default_f, gcpl_id=h5p_default_f, &
+            gapl_id=h5p_default_f)
 
        drank = 1
        ddim = size(tlag)
@@ -187,8 +187,8 @@ contains
     !
     if (allocated(fp) .or. allocated(fsp)) then
        call h5gcreate_f(file_id, "Fields", grp_id, ierr, &
-            & lcpl_id=h5p_default_f, gcpl_id=h5p_default_f, &
-            & gapl_id=h5p_default_f)
+            lcpl_id=h5p_default_f, gcpl_id=h5p_default_f, &
+            gapl_id=h5p_default_f)
 
        dcount(1) = int(dof%size(), 8)
        doffset(1) = msh%offset_el * int((dof%Xh%lx**3),8)
@@ -320,7 +320,7 @@ contains
        call h5sselect_hyperslab_f (filespace, H5S_SELECT_SET_F, &
                                    doffset, dcount, ierr)
        call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, tlag, ddim, ierr, &
-            & xfer_prp=plist_id)
+            xfer_prp=plist_id)
        call h5dclose_f(dset_id, ierr)
        call h5sclose_f(filespace, ierr)
 
@@ -329,7 +329,7 @@ contains
        call h5sselect_hyperslab_f (filespace, H5S_SELECT_SET_F, &
                                    doffset, dcount, ierr)
        call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, dtlag, ddim, ierr, &
-            & xfer_prp=plist_id)
+            xfer_prp=plist_id)
        call h5dclose_f(dset_id, ierr)
        call h5sclose_f(filespace, ierr)
 

@@ -1125,12 +1125,12 @@ contains
     ! Cyclic to symmetric face mapping
     integer(i4),  dimension(6), parameter :: fcyc_to_sym = [3, 2, 4, 1, 5, 6]
     ! Cyclic to symmetric edge mapping
-    integer(i4),  dimension(12), parameter :: ecyc_to_sym = [1, 6, 2, 5, 3, 8,&
-         & 4, 7, 9, 10, 12, 11]
+    integer(i4),  dimension(12), parameter :: ecyc_to_sym = &
+         [1, 6, 2, 5, 3, 8, 4, 7, 9, 10, 12, 11]
     ! Symmetric edge to vertex mapping
     integer, parameter, dimension(2, 12) :: edge_nodes = reshape([1, 2, 3, 4, &
-         & 5, 6, 7, 8, 1, 3, 2, 4, 5, 7, 6, 8, 1, 5, 2, 6, 3, 7, 4, 8], &
-         & [2,12]) 
+         5, 6, 7, 8, 1, 3, 2, 4, 5, 7, 6, 8, 1, 5, 2, 6, 3, 7, 4, 8], &
+         [2,12])
     ! copy from hex as this has private attribute there
 
     ! this subroutine is a mess of symmetric and cyclic edge/face numberring and
@@ -1158,7 +1158,7 @@ contains
     xys = sqrt(xs**2 + ys**2)
     ! sanity check
     if (abs(2.0 * radius) <= xys * 1.00001) &
-    & call neko_error('Radius to small for arced element surface')
+         call neko_error('Radius to small for arced element surface')
     ! find center
     dtheta = abs(asin(0.5_xp*xys/radius))
     pt12x  = (pt1x + pt2x)/2.0

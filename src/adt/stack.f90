@@ -40,7 +40,7 @@ module stack
   use structs, only : struct_curve_t
   use math, only : NEKO_M_LN2
   use tuple, only : tuple_i4_t, tuple4_i4_t, tuple_i8_t, tuple4_i8_t, &
-       & tuple_i4i8_t, tuple_i4r8_t, tuple_2i4r8_t
+       tuple_i4i8_t, tuple_i4r8_t, tuple_2i4r8_t
   implicit none
   private
 

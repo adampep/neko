@@ -177,7 +177,7 @@ contains
 
   !> Standard PCG solve
   function sx_gmres_solve(this, Ax, x, f, n, coef, blst, gs_h, niter) &
-       & result(ksp_results)
+       result(ksp_results)
     class(sx_gmres_t), intent(inout) :: this
     class(ax_t), intent(in) :: Ax
     type(field_t), intent(inout) :: x

@@ -103,7 +103,7 @@ contains
 
     call msh%init(3, dist)
     call msh%add_element(1, 1_i8, p(1), p(2), p(3), p(4), p(5), p(6), p(7), &
-         & p(8))
+         p(8))
 
     call msh%generate_conn()
     call Xh%init(GLL, lx, lx, lx)
@@ -144,7 +144,7 @@ contains
     call create_points(p)
     call msh%init(3, dist)
     call msh%add_element(1, 1_i8, p(1), p(2), p(3), p(4), p(5), p(6), p(7), &
-         & p(8))
+         p(8))
     call msh%generate_conn()
     call Xh%init(GLL, lx, lx, lx)
     call dof%init(msh, Xh)
@@ -209,7 +209,7 @@ contains
     call create_points(p)
     call msh%init(3, dist)
     call msh%add_element(1, 1_i8, p(1), p(2), p(3), p(4), p(5), p(6), p(7), &
-         & p(8))
+         p(8))
     call msh%generate_conn()
     call Xh%init(GLL, lx, lx, lx)
     call dof%init(msh, Xh)

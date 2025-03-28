@@ -177,7 +177,7 @@ contains
 
        ! fld format is constrained to glb_nelv given by i4 only;
        if (glb_nelv > huge(glb_nelv_i4)) &
-            & call neko_error('fld does not support int8 for element count')
+            call neko_error('fld does not support int8 for element count')
        ! cast element index
        allocate(idx_i4(nelv))
        do i = 1, nelv
@@ -267,7 +267,7 @@ contains
        allocate(idx_i4(msh%nelv))
        ! fld format is constrained to glb_nelv given by i4 only;
        if (glb_nelv > huge(glb_nelv_i4)) &
-         & call neko_error('fld does not support int8 for element count')
+            call neko_error('fld does not support int8 for element count')
        ! cast element index
        do i = 1, msh%nelv
           idx_i4(i) = int(msh%elements(i)%e%id(), i4)
@@ -342,7 +342,7 @@ contains
 
     ! For now fld supports msh%glb_nelv bounded by integer4
     if (glb_nelv > huge(glb_nelv_i4)) &
-         & call neko_error('fld does not support int8 for element count')
+         call neko_error('fld does not support int8 for element count')
     glb_nelv_i4 = int(glb_nelv, i4)
 
     !> @todo fix support for single precision output?
@@ -368,14 +368,14 @@ contains
 
     byte_offset = mpi_offset + offset_el * int(MPI_INTEGER_SIZE, i8)
     call MPI_File_write_at_all(fh, byte_offset, idx_i4, nelv, &
-         & MPI_INTEGER, status, ierr)
+         MPI_INTEGER, status, ierr)
     mpi_offset = mpi_offset + glb_nelv * int(MPI_INTEGER_SIZE, i8)
 
     deallocate(idx_i4)
 
     if (write_mesh) then
        byte_offset = mpi_offset + offset_el * (int(gdim * lxyz, i8) * &
-            & int(FLD_DATA_SIZE, i8))
+            int(FLD_DATA_SIZE, i8))
 
        call fld_file_write_vector_field(this, fh, byte_offset, &
             x%ptr, y%ptr, z%ptr, &
@@ -389,7 +389,7 @@ contains
        call fld_file_write_vector_field(this, fh, byte_offset, &
             u%ptr, v%ptr, w%ptr, n, gdim, lxyz, nelv)
        mpi_offset = mpi_offset + glb_nelv * (int(gdim * lxyz, i8) * &
-            & int(FLD_DATA_SIZE, i8))
+            int(FLD_DATA_SIZE, i8))
 
     end if
 
@@ -403,10 +403,10 @@ contains
 
     if (write_temperature) then
        byte_offset = mpi_offset + offset_el * (int(lxyz, i8) * &
-            & int(FLD_DATA_SIZE, i8))
+            int(FLD_DATA_SIZE, i8))
        call fld_file_write_field(this, fh, byte_offset, tem%ptr, n)
        mpi_offset = mpi_offset + glb_nelv * (int(lxyz, i8) * &
-            & int(FLD_DATA_SIZE, i8))
+            int(FLD_DATA_SIZE, i8))
     end if
 
     temp_offset = mpi_offset

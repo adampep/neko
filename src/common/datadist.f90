@@ -81,7 +81,7 @@ contains
     itmp8 = floor(dble(this%M) / dble(this%pe_size), i8)
     ! local number of elements is bounded by integer4
     if (itmp8 > huge(size)) &
-         & call neko_error('Local element number cannot exceed int4')
+         call neko_error('Local element number cannot exceed int4')
     this%L = int(itmp8, i4)
     this%R = int(modulo(this%M, int(this%pe_size, i8)), i4)
     this%Ip = floor((dble(this%M) + dble(this%pe_size) - &

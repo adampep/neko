@@ -276,7 +276,8 @@ contains
           end select
        end do
        if (curve_skip) then
-          call neko_log%warning('Curve type: s, e are not supported, treating mesh as non-curved.')
+          call neko_log%warning('Curve type: s, e are not supported, &
+               &treating mesh as non-curved.')
        else
           do el_idx = 1, nelgv_i4
              if (curve_element(el_idx)) then
@@ -501,7 +502,7 @@ contains
   !! @param print_info Wether or not to print information to the standard
   !! output.
   subroutine rea_file_mark_labeled_bc(msh, el_idx, facet, type, label, &
-       & offset, print_info)
+       offset, print_info)
     type(mesh_t), intent(inout) :: msh
     integer, intent(in) :: el_idx
     integer, intent(in) :: facet

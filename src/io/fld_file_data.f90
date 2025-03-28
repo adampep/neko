@@ -214,7 +214,7 @@ contains
 
     do i = 1, this%n_scalars
        if(this%s(i)%n .gt. 0) &
-            & call add2(this%s(i)%x,fld_data_add%s(i)%x,this%s(i)%n)
+            call add2(this%s(i)%x,fld_data_add%s(i)%x,this%s(i)%n)
     end do
   end subroutine fld_file_data_add
 

@@ -229,7 +229,7 @@ contains
 
   !> Add a (facet, el) tuple to an unfinalized zone
   subroutine facet_zone_periodic_add_facet(z, facet, el, p_facet, p_el, pids, &
-       & org_ids)
+       org_ids)
     class(facet_zone_periodic_t), intent(inout) :: z
     integer, intent(in) :: facet   !< Facet in the zone
     integer, intent(in) :: el      !< Element  in the zone (local number)

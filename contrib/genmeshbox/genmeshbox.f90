@@ -212,8 +212,8 @@ program genmeshbox
               end do
            end do
            el_idx8 = i
-           call msh%add_element(i, el_idx8, p(1,1,1), p(2,1,1), p(1,2,1),&
-                & p(2,2,1), p(1,1,2), p(2,1,2), p(1,2,2), p(2,2,2))
+           call msh%add_element(i, el_idx8, p(1,1,1), p(2,1,1), p(1,2,1), &
+                p(2,2,1), p(1,1,2), p(2,1,2), p(1,2,2), p(2,2,2))
            i = i + 1
         end do
      end do

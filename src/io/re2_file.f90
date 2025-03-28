@@ -113,7 +113,7 @@ contains
 
     if (hdr_ver .eq. '#v004') then
        read(hdr_full, '(a5,i16,i3,i16,i4,a36)') hdr_ver, nel, ndim, nelv, &
-            & nBCre2, hdr_str
+            nBCre2, hdr_str
        v2_format = .true.
     else if (hdr_ver .eq. '#v002' .or. hdr_ver .eq. '#v003') then
        read(hdr_full, '(a5,i9,i3,i9,a54)') hdr_ver, nel, ndim, nelv, hdr_str
@@ -180,35 +180,35 @@ contains
     mpi_offset = RE2_HDR_SIZE * MPI_CHARACTER_SIZE + MPI_REAL_SIZE
     if (ndim .eq. 2) then
        mpi_offset = mpi_offset + dist%num_global() * &
-            & int(re2_data_xy_size, i8)
+            int(re2_data_xy_size, i8)
     else
        mpi_offset = mpi_offset + dist%num_global() * &
-            & int(re2_data_xyz_size, i8)
+            int(re2_data_xyz_size, i8)
     end if
 
     !> @todo Add support for curved side data
     !! Skip curved side data
     if (v2_format) then
        call MPI_File_read_at_all(fh, mpi_offset, t2, 1, MPI_DOUBLE_PRECISION, &
-            & status, ierr)
+            status, ierr)
        ncurv = int(t2)
        mpi_offset = mpi_offset + MPI_DOUBLE_PRECISION_SIZE
        call re2_file_read_curve(msh, ncurv, dist, fh, mpi_offset, v2_format)
        mpi_offset = mpi_offset + int(ncurv, i8) * int(re2_data_cv_size, i8)
        call MPI_File_read_at_all(fh, mpi_offset, t2, 1, MPI_DOUBLE_PRECISION, &
-            & status, ierr)
+            status, ierr)
        nbcs = int(t2)
        mpi_offset = mpi_offset + MPI_DOUBLE_PRECISION_SIZE
 
        call re2_file_read_bcs(msh, nbcs, dist, fh, mpi_offset, v2_format)
     else
        call MPI_File_read_at_all(fh, mpi_offset, ncurv, 1, MPI_INTEGER, &
-            & status, ierr)
+            status, ierr)
        mpi_offset = mpi_offset + MPI_INTEGER_SIZE
        call re2_file_read_curve(msh, ncurv, dist, fh, mpi_offset, v2_format)
        mpi_offset = mpi_offset + int(ncurv, i8) * int(re2_data_cv_size, i8)
        call MPI_File_read_at_all(fh, mpi_offset, nbcs, 1, MPI_INTEGER, &
-            & status, ierr)
+            status, ierr)
        mpi_offset = mpi_offset + MPI_INTEGER_SIZE
 
        call re2_file_read_bcs(msh, nbcs, dist, fh, mpi_offset, v2_format)
@@ -262,7 +262,7 @@ contains
 
     ! For now re2 supports msh%glb_nelv bounded by integer4
     if (nelgv8 > huge(nelgv)) &
-         & call neko_error('re2 does not support int8 for element count')
+         call neko_error('re2 does not support int8 for element count')
     nelgv = int(nelgv8, i4)
     element_offset = int(element_offset8, i4)
 
@@ -525,8 +525,8 @@ contains
           curve_type(id,el_idx) = 4
        case default
           write(*,*) chtemp, &
-               & 'curve type not supported yet, treating mesh as non-curved', &
-               & id, el_idx
+               'curve type not supported yet, treating mesh as non-curved', &
+               id, el_idx
 
           curve_skip = .true.
        end select
@@ -917,7 +917,7 @@ contains
   !! @param print_info Wether or not to print information to the standard
   !! output.
   subroutine re2_file_mark_labeled_bc(msh, el_idx, facet, type, label, &
-       & offset, print_info)
+       offset, print_info)
     type(mesh_t), intent(inout) :: msh
     integer, intent(in) :: el_idx
     integer, intent(in) :: facet
