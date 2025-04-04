@@ -37,7 +37,7 @@ module entity
 
   !> Base type for an entity
   type, public, abstract :: entity_t
-     integer(i8), private :: id_ = -1 !< Entity index
+     integer(i8), private :: id_ = -1_i8 !< Entity index
    contains
      procedure, pass(this) :: id => entity_id
      procedure, pass(this) :: set_id => entity_set_id
