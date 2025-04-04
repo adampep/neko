@@ -624,7 +624,7 @@ contains
   !> Return a pointer to the interal 2-tuple array
   function stack_i8t2_data(this) result(data)
     class(stack_i8t2_t), target, intent(inout) :: this
-    type(tuple_i8_t), pointer :: data(:)
+    type(tuple_i8_t), contiguous, pointer :: data(:)
 
     select type (sdp=>this%data)
     type is (tuple_i8_t)
@@ -678,7 +678,7 @@ contains
   !> Return a pointer to the internal 4-tuple array
   function stack_i8t4_data(this) result(data)
     class(stack_i8t4_t), target, intent(inout) :: this
-    type(tuple4_i8_t), pointer :: data(:)
+    type(tuple4_i8_t), contiguous, pointer :: data(:)
 
     select type (sdp=>this%data)
     type is (tuple4_i8_t)
@@ -705,7 +705,7 @@ contains
   !> Return a pointer to the internal 2-tuple array
   function stack_i4i8t2_data(this) result(data)
     class(stack_i4i8t2_t), target, intent(inout) :: this
-    type(tuple_i4i8_t), pointer :: data(:)
+    type(tuple_i4i8_t), contiguous, pointer :: data(:)
 
     select type (sdp=>this%data)
     type is (tuple_i4i8_t)
@@ -894,7 +894,7 @@ contains
   !> Return a pointer to the internal Neko curve info array
   function stack_nc_data(this) result(data)
     class(stack_nc_t), target, intent(inout) :: this
-    type(nmsh_curve_el_t), pointer :: data(:)
+    type(nmsh_curve_el_t), contiguous, pointer :: data(:)
 
     select type (sdp=>this%data)
     type is (nmsh_curve_el_t)

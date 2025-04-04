@@ -439,7 +439,11 @@ contains
              select type(tuplep => datap)
              type is (tuple_i4_t)
                 call htable_set(tmp, this%t(i)%key, tuplep)
+             type is (tuple_i8_t)
+                call htable_set(tmp, this%t(i)%key, tuplep)
              type is (tuple4_i4_t)
+                call htable_set(tmp, this%t(i)%key, tuplep)
+             type is (tuple4_i8_t)
                 call htable_set(tmp, this%t(i)%key, tuplep)
              end select
           type is (h_cptr_t)
