@@ -1,5 +1,5 @@
-
-!> Creates a 1d GLL point map along a specified direction based on the connectivity in the mesh.
+!> Creates a 1d GLL point map along a specified direction based on the
+!! connectivity in the mesh.
 module map_1d
   use num_types, only: rp
   use space, only: space_t
@@ -28,13 +28,14 @@ module map_1d
      integer, allocatable :: dir_el(:)
      !> Checks which level an element belongs to.
      integer, allocatable :: el_lvl(:)
-     !> Checks which level or id in the 1D GLL mapping each point in the dofmap is.
+     !> Checks which level or id in the 1D GLL mapping each point in the
+     !! dofmap is.
      integer, allocatable :: pt_lvl(:,:,:,:)
-     !> Number of elements stacked on top of eachother in the specified direction
+     !> Number of elements stacked on top of eachother in the specified
+     !! direction
      integer :: n_el_lvls
      !> Number of total gll levels
      integer :: n_gll_lvls
-     !> Dofmap
      !> Dofmap
      type(dofmap_t), pointer :: dof => null()
      !> SEM coefs
@@ -56,9 +57,9 @@ module map_1d
      !> Destructor
      procedure, pass(this) :: free => map_1d_free
      !> Average field list along planes
-     procedure, pass(this) :: average_planes_fld_lst =>  map_1d_average_field_list
+     procedure, pass(this) :: average_planes_fld_lst => map_1d_average_field_list
 
-     procedure, pass(this) :: average_planes_vec_ptr =>  map_1d_average_vector_ptr
+     procedure, pass(this) :: average_planes_vec_ptr => map_1d_average_vector_ptr
      generic :: average_planes => average_planes_fld_lst, average_planes_vec_ptr
   end type map_1d_t
 
@@ -117,7 +118,11 @@ contains
 
     !> @todo Missing check if the chosen direction is aligned wit the given axis
     !! and orthogonal to the other two. In addition one would need to check if
-    !! the element is deformed in a given direction
+    !! the element is deformed in a given direction. In more general case one
+    !! could check if two other two versors are orthogonal to the chosen
+    !! direction, but this may be not enough to guarantee points stay in
+    !! the layers.
+    !! This algorithm may fail with AMR, so additional test would be needed.
     do i = 1, nelv
        !store which direction r,s,t corresponds to speciifed direction, x,y,z
        !we assume elements are stacked on each other...
@@ -141,11 +146,12 @@ contains
 
     i = 1
     this%el_lvl = -1
-    ! Check what the mimum value in each element and put in min_vals
+    ! Check what the minimum value in each element and put in min_vals
     do e = 1, nelv
        el_min = minval(line(:,:,:,e))
        min_vals(:,:,:,e) = el_min
-       ! Check if this element is on the bottom, in this case assign el_lvl = i = 1
+       ! Check if this element is on the bottom, in this case assign
+       ! el_lvl = i = 1
        if (relcmp(el_min, glb_min, this%tol)) then
           if(this%el_lvl(e) .eq. -1) this%el_lvl(e) = i
        end if
@@ -305,6 +311,9 @@ contains
     call avg_planes%free()
     call avg_planes%init(this%n_gll_lvls, field_list%size()+1)
     avg_planes = 0.0_rp
+    !> @todo If inside a loop is really ugly, but in general coordinates could
+    !! be calculated once at the initialisation step. On the other hand, why
+    !! division inside the loop?
     !ugly way of getting coordinates, computes average
     n = this%dof%size()
     do i = 1, n
@@ -324,7 +333,8 @@ contains
        end do
     end do
     if (pe_size .gt. 1) then
-       call MPI_Allreduce(MPI_IN_PLACE, avg_planes%x, (field_list%size()+1)*this%n_gll_lvls, &
+       call MPI_Allreduce(MPI_IN_PLACE, avg_planes%x, &
+            (field_list%size()+1)*this%n_gll_lvls, &
             MPI_REAL_PRECISION, MPI_SUM, NEKO_COMM, ierr)
     end if
 
@@ -349,6 +359,10 @@ contains
     !ugly way of getting coordinates, computes average
     avg_planes = 0.0_rp
 
+    !> @todo If inside a loop is really ugly, but in general coordinates could
+    !! be calculated once at the initialisation step. On the other hand, why
+    !! division inside the loop?
+    !ugly way of getting coordinates, computes average
     n = this%dof%size()
     do i = 1, n
        if (this%dir .eq. 1) coord = this%dof%x(i,1,1,1)
@@ -366,8 +380,9 @@ contains
           /this%volume_per_gll_lvl(this%pt_lvl(i,1,1,1))
        end do
     end do
-    call MPI_Allreduce(MPI_IN_PLACE,avg_planes%x, (size(vector_ptr)+1)*this%n_gll_lvls, &
-       MPI_REAL_PRECISION, MPI_SUM, NEKO_COMM, ierr)
+    call MPI_Allreduce(MPI_IN_PLACE,avg_planes%x, &
+         (size(vector_ptr)+1)*this%n_gll_lvls, &
+         MPI_REAL_PRECISION, MPI_SUM, NEKO_COMM, ierr)
 
 
   end subroutine map_1d_average_vector_ptr
