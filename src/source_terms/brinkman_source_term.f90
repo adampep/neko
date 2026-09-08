@@ -1259,6 +1259,7 @@ contains
 
           ! Restart PDE filter
           call this%filter%amr_restart(reconstruct, counter, time)
+
           ! apply filter
           call this%filter%apply(this%indicator, this%unfiltered)
        class default
@@ -1272,27 +1273,6 @@ contains
     this%brinkman = this%indicator
     call permeability_field(this%brinkman, this%brinkman_limits(1), &
          this%brinkman_limits(2), this%brinkman_penalty)
-
-    
-    block
-      type(file_t) :: output
-      type(field_list_t) :: output_fields
-      character(len=:), allocatable :: fname
-      integer :: precision
-      fname = './brinkman_ref.fld'
-      precision = sp
-      call output%init(fname, precision = precision)
-      call output_fields%init(2)
-      call output_fields%assign_to_field(1, this%indicator)
-      call output_fields%assign_to_field(2, this%brinkman)
-      call output%write(output_fields)
-      call output%free()
-      call output_fields%free()
-
-      write(*,*) "TESTfilterPDE", allocated(this%filter), &
-           associated(this%unfiltered)
-    end block
-    
 
   end subroutine brinkman_source_term_amr_restart
 
