@@ -197,7 +197,10 @@ contains
       call this%monitor_start('CG')
       do iter = 1, max_iter
          call this%M%solve(z, r, n)
-         if (allocated(gs_h%interp)) call gs_h%op_h1(z, n, GS_OP_ADD)
+         if (allocated(gs_h%interp)) then
+            call blst%apply(z, n)
+            call gs_h%op_h1(z, n, GS_OP_ADD)
+         end if
 
          rtz2 = rtz1
          rtz1 = glsc3(r, coef%mult, z, n)
@@ -211,8 +214,14 @@ contains
          !$omp end parallel do
 
          call Ax%compute(w, p(1,p_cur), coef, x%msh, x%Xh)
-         call gs_h%op(w, n, GS_OP_ADD)
-         call blst%apply(w, n)
+
+         if (allocated(gs_h%interp)) then
+            call blst%apply(w, n)
+            call gs_h%op(w, n, GS_OP_ADD)
+         else
+            call gs_h%op(w, n, GS_OP_ADD)
+            call blst%apply(w, n)
+         end if
 
          pap = glsc3(w, coef%mult, p(1,p_cur), n)
 

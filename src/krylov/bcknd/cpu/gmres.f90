@@ -228,8 +228,13 @@ contains
          else
             call copy(r, f, n)
             call Ax%compute(w, x%x, coef, x%msh, x%Xh)
-            call gs_h%op(w, n, GS_OP_ADD)
-            call blst%apply(w, n)
+            if (allocated(gs_h%interp)) then
+               call blst%apply(w, n)
+               call gs_h%op(w, n, GS_OP_ADD)
+            else
+               call gs_h%op(w, n, GS_OP_ADD)
+               call blst%apply(w, n)
+            end if
             call sub2(r, w, n)
          end if
 
@@ -247,11 +252,19 @@ contains
             iter = iter+1
 
             call this%M%solve(z(1,j), v(1,j), n)
-            if (allocated(gs_h%interp)) call gs_h%op_h1(z(:,j), n, GS_OP_ADD)
+            if (allocated(gs_h%interp)) then
+               call blst%apply(z(:,j), n)
+               call gs_h%op_h1(z(:,j), n, GS_OP_ADD)
+            end if
 
             call Ax%compute(w, z(1,j), coef, x%msh, x%Xh)
-            call gs_h%op(w, n, GS_OP_ADD)
-            call blst%apply(w, n)
+            if (allocated(gs_h%interp)) then
+               call blst%apply(w, n)
+               call gs_h%op(w, n, GS_OP_ADD)
+            else
+               call gs_h%op(w, n, GS_OP_ADD)
+               call blst%apply(w, n)
+            end if
 
             ! Classical Gram-Schmidt orthogonalization: accumulate
             ! <w, v_l>_mult for l=1..j into per-thread columns of hp,
